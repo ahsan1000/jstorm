@@ -24,14 +24,12 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import backtype.storm.Config;
 import backtype.storm.messaging.IContext;
 import backtype.storm.serialization.KryoTupleSerializer;
 import backtype.storm.spout.ISpout;
 import backtype.storm.task.IBolt;
 import backtype.storm.task.TopologyContext;
 import backtype.storm.utils.DisruptorQueue;
-import backtype.storm.utils.Utils;
 import backtype.storm.utils.WorkerClassLoader;
 import clojure.lang.Atom;
 
@@ -49,7 +47,6 @@ import com.alibaba.jstorm.task.comm.UnanchoredSend;
 import com.alibaba.jstorm.task.error.ITaskReportErr;
 import com.alibaba.jstorm.task.error.TaskReportError;
 import com.alibaba.jstorm.task.error.TaskReportErrorAndDie;
-import com.alibaba.jstorm.task.execute.BaseExecutors;
 import com.alibaba.jstorm.task.execute.BoltExecutors;
 import com.alibaba.jstorm.task.execute.spout.MultipleThreadSpoutExecutors;
 import com.alibaba.jstorm.task.execute.spout.SingleThreadSpoutExecutors;
@@ -59,9 +56,6 @@ import com.alibaba.jstorm.task.heartbeat.TaskHeartbeatRunable;
 import com.alibaba.jstorm.task.heartbeat.TaskStats;
 import com.alibaba.jstorm.utils.JStormServerUtils;
 import com.alibaba.jstorm.utils.JStormUtils;
-import com.alibaba.jstorm.utils.NetWorkUtils;
-import com.lmax.disruptor.WaitStrategy;
-import com.lmax.disruptor.dsl.ProducerType;
 
 /**
  * Task instance
@@ -103,6 +97,9 @@ public class Task {
 
     private boolean isTaskBatchTuple;
 
+    // collective communication planner
+    private CommunicationPlanner ccPlanner;
+
     @SuppressWarnings("rawtypes")
     public Task(WorkerData workerData, int taskId) throws Exception {
         openOrPrepareWasCalled = new Atom(Boolean.valueOf(false));
@@ -132,6 +129,7 @@ public class Task {
         this.workHalt = workerData.getWorkHalt();
         this.zkCluster =
                 new StormZkClusterState(workerData.getZkClusterstate());
+        this.ccPlanner = new CommunicationPlanner(workerData);
 
         LOG.info("Begin to deserialize taskObj " + componentid + ":" + taskid);
 
@@ -268,15 +266,19 @@ public class Task {
     public TaskReceiver mkTaskReceiver() {
         String taskName = JStormServerUtils.getName(componentid, taskid);
         TaskReceiver taskReceiver;
-        if (isTaskBatchTuple)
+        DownstreamTasks downStreamTasks = ccPlanner.getDownStreamTasks(topologyContext, componentid);
+        if (isTaskBatchTuple) {
+            taskTransfer.setDownStreamTasks(downStreamTasks);
             taskReceiver =
                     new TaskBatchReceiver(this, taskid, stormConf,
                             topologyContext, innerTaskTransfer, taskStatus,
-                            taskName);
-        else
+                            taskName, downStreamTasks, taskTransfer);
+        } else {
+            taskTransfer.setDownStreamTasks(downStreamTasks);
             taskReceiver =
                     new TaskReceiver(this, taskid, stormConf, topologyContext,
-                            innerTaskTransfer, taskStatus, taskName);
+                            innerTaskTransfer, taskStatus, taskName, downStreamTasks, taskTransfer);
+        }
         deserializeQueues.put(taskid, taskReceiver.getDeserializeQueue());
         return taskReceiver;
     }

@@ -1401,6 +1401,18 @@ public class Config extends HashMap<String, Object> {
     public static final String TOPOLOGY_ISOLATED_MACHINES = "topology.isolate.machines";
     public static final Object TOPOLOGY_ISOLATED_MACHINES_SCHEMA = Number.class;
 
+    /**
+     * Collective communication constants
+     */
+    /**
+     * Defines the branching factor for broadcast operations, at the supervisor level
+     */
+    public static final String COLLECTIVE_NODE_BRANCHING_FACTOR = "topology.collective.node.branch";
+    /**
+     * Defines the branching factor for broadcast operations at the worker level in a single machine
+     */
+    public static final String COLLECTIVE_WORKER_BRANCHING_FACTOR = "topology.collective.worker.branch";
+
     public static void setClasspath(Map conf, String cp) {
         conf.put(Config.TOPOLOGY_CLASSPATH, cp);
     }

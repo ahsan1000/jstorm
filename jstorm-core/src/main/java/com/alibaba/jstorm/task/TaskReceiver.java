@@ -18,7 +18,11 @@
 package com.alibaba.jstorm.task;
 
 import java.util.Map;
+import java.util.Set;
 
+import backtype.storm.generated.GlobalStreamId;
+import backtype.storm.tuple.BatchTuple;
+import com.alibaba.jstorm.daemon.worker.timer.TimerTrigger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -62,10 +66,17 @@ public class TaskReceiver {
 
     protected TaskStatus taskStatus;
 
+    // if this task works as a broadcast intermediary, what are the tasks we need to relay this message
+    // the tasks are grouped with stream id
+    protected DownstreamTasks downStreamTasks;
+
+    protected TaskTransfer taskTransfer;
+
     public TaskReceiver(Task task, int taskId, Map stormConf,
             TopologyContext topologyContext,
             Map<Integer, DisruptorQueue> innerTaskTransfer,
-            TaskStatus taskStatus, String taskName) {
+            TaskStatus taskStatus, String taskName,
+            DownstreamTasks downStreamTasks, TaskTransfer taskTransfer) {
         this.task = task;
         this.taskId = taskId;
         this.idStr = taskName;
@@ -74,6 +85,8 @@ public class TaskReceiver {
         this.innerTaskTransfer = innerTaskTransfer;
 
         this.taskStatus = taskStatus;
+        this.taskTransfer = taskTransfer;
+        this.downStreamTasks = downStreamTasks;
 
         this.isDebugRecv = ConfigExtension.isTopologyDebugRecvTuple(stormConf);
 
@@ -181,9 +194,52 @@ public class TaskReceiver {
         public void onEvent(Object event, long sequence, boolean endOfBatch)
                 throws Exception {
             Object tuple = deserialize((byte[]) event);
+            if (tuple instanceof Tuple) {
+                processTupleEvent((Tuple) tuple, event);
+            } else if (tuple instanceof BatchTuple) {
+                for (Tuple t : ((BatchTuple) tuple).getTuples()) {
+                    processTupleEvent(t, event);
+                }
+            } else if (tuple instanceof TimerTrigger.TimerEvent) {
+                exeQueue.publish(event);
+            } else {
+                LOG.warn("Received unknown message");
+            }
 
+        }
+
+        private void processTupleEvent(Tuple tuple, Object event) {
             if (tuple != null) {
-                exeQueue.publish(tuple);
+                String streamId = tuple.getSourceStreamId();
+                String sourceCompoent = tuple.getSourceComponent();
+                GlobalStreamId globalStreamId = new GlobalStreamId(sourceCompoent, streamId);
+                LOG.info("Received message with stream ID: " + globalStreamId);
+                // lets determine weather we need to send this message to other tasks as well acting as an intermediary
+                Map<GlobalStreamId, Set<Integer>> downsTasks = downStreamTasks.allDownStreamTasks(taskId);
+                if (downsTasks != null && downsTasks.containsKey(globalStreamId)) {
+                    // for now lets use the deserialized task and send it back... ideally we should send the byte message
+                    Set<Integer> tasks = downsTasks.get(globalStreamId) ;
+                    for (Integer task : tasks) {
+                        taskTransfer.transfer((byte[]) event, task);
+                    }
+
+                    //if (LOG.isDebugEnabled()) {
+                    StringBuilder sb = new StringBuilder("Sending downstream message from task ").append(topologyContext.getThisTaskId()).append("[");
+                    for (Integer task : tasks) {
+                        sb.append(task).append(", ");
+                    }
+                    sb.append("]");
+                    LOG.info(sb.toString());
+                    //}
+                } else {
+                    LOG.info("No Downstream task for message with stream ID: " + globalStreamId);
+                }
+                // finally we will execute the tuple here in this task
+                if (!downStreamTasks.isRelayingTuple(taskId, globalStreamId)) {
+                    exeQueue.publish(tuple);
+                } else {
+                    LOG.info("TaskID: " + taskId + " act as a relaying task for: " + globalStreamId);
+                }
             }
         }
 

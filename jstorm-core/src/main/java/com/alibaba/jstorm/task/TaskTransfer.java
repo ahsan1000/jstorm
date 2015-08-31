@@ -18,9 +18,11 @@
 package com.alibaba.jstorm.task;
 
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import backtype.storm.generated.GlobalStreamId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -77,6 +79,9 @@ public class TaskTransfer {
     protected ConcurrentHashMap<WorkerSlot, IConnection> nodeportSocket;
     protected ConcurrentHashMap<Integer, WorkerSlot> taskNodeport;
 
+    // broadcast tasks for each stream
+    private DownstreamTasks downStreamTasks;
+
     public TaskTransfer(Task task, String taskName,
             KryoTupleSerializer serializer, TaskStatus taskStatus,
             WorkerData workerData) {
@@ -119,17 +124,44 @@ public class TaskTransfer {
 
     }
 
+    public void setDownStreamTasks(DownstreamTasks downStreamTasks) {
+        this.downStreamTasks = downStreamTasks;
+    }
+
     public void transfer(TupleExt tuple) {
 
         int taskid = tuple.getTargetTaskId();
 
         DisruptorQueue exeQueue = innerTaskTransfer.get(taskid);
         if (exeQueue != null) {
-            exeQueue.publish(tuple);
+            String streamId = tuple.getSourceStreamId();
+            String sourceCompoent = tuple.getSourceComponent();
+            GlobalStreamId globalStreamId = new GlobalStreamId(sourceCompoent, streamId);
+            // lets determine weather we need to send this message to other tasks as well acting as an intermediary
+            Map<GlobalStreamId, Set<Integer>> downsTasks = downStreamTasks.allDownStreamTasks(taskid);
+            if (downsTasks != null && downsTasks.containsKey(globalStreamId)) {
+                // for now lets use the deserialized task and send it back... ideally we should send the byte message
+                Set<Integer> tasks = downsTasks.get(globalStreamId) ;
+                byte[] tupleMessage = serializer.serialize(tuple);
+                for (Integer task : tasks) {
+                    TaskMessage taskMessage = new TaskMessage(task, tupleMessage);
+                    transferQueue.publish(taskMessage);
+                }
+            } else {
+                LOG.info("No Downstream task for message with stream ID: " + globalStreamId);
+            }
+            if (!downStreamTasks.isRelayingTuple(taskid, globalStreamId)) {
+                exeQueue.publish(tuple);
+            }
         } else {
             serializeQueue.publish(tuple);
         }
 
+    }
+
+    public void transfer(byte []tuple, int task) {
+        TaskMessage taskMessage = new TaskMessage(task, tuple);
+        transferQueue.publish(taskMessage);
     }
 
     protected AsyncLoopThread setupSerializeThread() {

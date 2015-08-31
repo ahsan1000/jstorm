@@ -38,9 +38,10 @@ public class TaskBatchReceiver extends TaskReceiver {
     public TaskBatchReceiver(Task task, int taskId, Map stormConf,
             TopologyContext topologyContext,
             Map<Integer, DisruptorQueue> innerTaskTransfer,
-            TaskStatus taskStatus, String taskName) {
+            TaskStatus taskStatus, String taskName,
+            DownstreamTasks downStreamTasks, TaskTransfer taskTransfer) {
         super(task, taskId, stormConf, topologyContext, innerTaskTransfer,
-                taskStatus, taskName);
+                taskStatus, taskName, downStreamTasks, taskTransfer);
     }
 
     @Override
