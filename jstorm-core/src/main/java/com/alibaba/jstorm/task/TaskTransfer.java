@@ -131,32 +131,22 @@ public class TaskTransfer {
     public void transfer(TupleExt tuple) {
 
         int taskid = tuple.getTargetTaskId();
+        int tartgetTasks = tuple.getTargetTaskId();
+        int sourceTask = tuple.getSourceTask();
+        GlobalStreamId key = new GlobalStreamId(tuple.getSourceComponent(), tuple.getSourceStreamId());
 
-        DisruptorQueue exeQueue = innerTaskTransfer.get(taskid);
-        if (exeQueue != null) {
-            String streamId = tuple.getSourceStreamId();
-            String sourceCompoent = tuple.getSourceComponent();
-            GlobalStreamId globalStreamId = new GlobalStreamId(sourceCompoent, streamId);
-            // lets determine weather we need to send this message to other tasks as well acting as an intermediary
-            Map<GlobalStreamId, Set<Integer>> downsTasks = downStreamTasks.allDownStreamTasks(taskid);
-            if (downsTasks != null && downsTasks.containsKey(globalStreamId)) {
-                // for now lets use the deserialized task and send it back... ideally we should send the byte message
-                Set<Integer> tasks = downsTasks.get(globalStreamId) ;
-                byte[] tupleMessage = serializer.serialize(tuple);
-                for (Integer task : tasks) {
-                    TaskMessage taskMessage = new TaskMessage(task, tupleMessage);
-                    transferQueue.publish(taskMessage);
+        Set<Integer> downStreamTaskMappings = downStreamTasks.getMappingTasks(tartgetTasks, sourceTask, key);
+        for (int task : downStreamTaskMappings) {
+            tuple.setTargetTaskId(task);
+            DisruptorQueue exeQueue = innerTaskTransfer.get(task);
+            if (exeQueue != null) {
+                if (!downStreamTasks.isRelayingTuple(taskid, key)) {
+                    exeQueue.publish(tuple);
                 }
             } else {
-                LOG.info("No Downstream task for message with stream ID: " + globalStreamId);
+                serializeQueue.publish(tuple);
             }
-            if (!downStreamTasks.isRelayingTuple(taskid, globalStreamId)) {
-                exeQueue.publish(tuple);
-            }
-        } else {
-            serializeQueue.publish(tuple);
         }
-
     }
 
     public void transfer(byte []tuple, int task) {
