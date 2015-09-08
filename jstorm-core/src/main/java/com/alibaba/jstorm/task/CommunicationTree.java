@@ -84,7 +84,7 @@ public class CommunicationTree {
             this.workerLevelBranchingFactor = workerLevelBranching;
         }
 
-        Integer nodeLevelBranching = (Integer) conf.get(Config.COLLECTIVE_WORKER_BRANCHING_FACTOR);
+        Integer nodeLevelBranching = (Integer) conf.get(Config.COLLECTIVE_NODE_BRANCHING_FACTOR);
         if (nodeLevelBranching != null) {
             this.nodeLevelBranchingFactor = nodeLevelBranching;
         }
