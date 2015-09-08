@@ -224,6 +224,7 @@ public class TaskReceiver {
                     StringBuilder outerTaskTextMsg = new StringBuilder();
                     for (Integer task : tasks) {
                         if (task != taskId) {
+                            // these tasks can be in the same worker or in a different worker
                             outerTaskTextMsg.append(task).append(" ");
                             DisruptorQueue exeQueueNext = innerTaskTransfer.get(task);
                             if (exeQueueNext != null) {

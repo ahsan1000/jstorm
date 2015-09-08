@@ -159,6 +159,7 @@ public class TaskTransfer {
                 StringBuilder outerTaskTextMsg = new StringBuilder();
                 for (Integer task : tasks) {
                     if (task != mapping) {
+                        // these tasks can be in the same worker or in a different worker
                         DisruptorQueue exeQueueNext = innerTaskTransfer.get(task);
                         outerTaskTextMsg.append(task).append(" ");
                         if (exeQueueNext != null) {
