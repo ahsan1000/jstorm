@@ -9,6 +9,8 @@ public class DownstreamTasks {
 
     private Map<GlobalStreamId, List<CommunicationTree>> nonExpandingTrees = new HashMap<GlobalStreamId, List<CommunicationTree>>();
 
+    private Map<Integer, Map<GlobalStreamId, Set<Integer>>> downstreamTaskCache = new HashMap<Integer, Map<GlobalStreamId, Set<Integer>>>();
+
     public int getMapping(GlobalStreamId streamId, int taskId, int targetId) {
         if (nonExpandingTrees.containsKey(streamId)) {
             List<CommunicationTree> trees = nonExpandingTrees.get(streamId);
@@ -68,28 +70,33 @@ public class DownstreamTasks {
      * @return a map of all the downstream tasks, keyed by the stream and component id
      */
     public Map<GlobalStreamId, Set<Integer>> allDownStreamTasks(int taskId) {
-        Map<GlobalStreamId, Set<Integer>> allTasks = new HashMap<GlobalStreamId, Set<Integer>>();
-        for (Map.Entry<GlobalStreamId, List<CommunicationTree>> e : expandingTrees.entrySet()) {
-            GlobalStreamId id = e.getKey();
-            List<CommunicationTree> treeList = e.getValue();
-            TreeSet<Integer> treeSet = new TreeSet<Integer>();
-            for (CommunicationTree t : treeList) {
-                treeSet.addAll(t.getChildTasks(taskId));
-            }
-            allTasks.put(id, treeSet);
-        }
-        for (Map.Entry<GlobalStreamId, List<CommunicationTree>> e : nonExpandingTrees.entrySet()) {
-            GlobalStreamId id = e.getKey();
-            List<CommunicationTree> treeList = e.getValue();
-            Set<Integer> treeSet = allTasks.get(id);
-            if (treeSet == null) {
-                treeSet = new TreeSet<Integer>();
+        if (downstreamTaskCache.containsKey(taskId)) {
+            return downstreamTaskCache.get(taskId);
+        } else {
+            Map<GlobalStreamId, Set<Integer>> allTasks = new HashMap<GlobalStreamId, Set<Integer>>();
+            for (Map.Entry<GlobalStreamId, List<CommunicationTree>> e : expandingTrees.entrySet()) {
+                GlobalStreamId id = e.getKey();
+                List<CommunicationTree> treeList = e.getValue();
+                TreeSet<Integer> treeSet = new TreeSet<Integer>();
+                for (CommunicationTree t : treeList) {
+                    treeSet.addAll(t.getChildTasks(taskId));
+                }
                 allTasks.put(id, treeSet);
             }
-            for (CommunicationTree t : treeList) {
-                treeSet.addAll(t.getChildTasks(taskId));
+            for (Map.Entry<GlobalStreamId, List<CommunicationTree>> e : nonExpandingTrees.entrySet()) {
+                GlobalStreamId id = e.getKey();
+                List<CommunicationTree> treeList = e.getValue();
+                Set<Integer> treeSet = allTasks.get(id);
+                if (treeSet == null) {
+                    treeSet = new TreeSet<Integer>();
+                    allTasks.put(id, treeSet);
+                }
+                for (CommunicationTree t : treeList) {
+                    treeSet.addAll(t.getChildTasks(taskId));
+                }
             }
+            downstreamTaskCache.put(taskId, allTasks);
+            return allTasks;
         }
-        return allTasks;
     }
 }
