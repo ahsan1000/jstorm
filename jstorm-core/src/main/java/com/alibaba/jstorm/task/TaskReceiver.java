@@ -214,7 +214,7 @@ public class TaskReceiver {
                 String sourceCompoent = tuple.getSourceComponent();
                 int sourceTask = tuple.getSourceTask();
                 GlobalStreamId globalStreamId = new GlobalStreamId(sourceCompoent, streamId);
-                LOG.info("Received message with stream ID: {} sourceTask {}", globalStreamId, sourceTask);
+                LOG.debug("Received message with stream ID: {} sourceTask {}", globalStreamId, sourceTask);
                 // lets determine weather we need to send this message to other tasks as well acting as an intermediary
                 Map<GlobalStreamId, Set<Integer>> downsTasks = downStreamTasks.allDownStreamTasks(taskId);
                 if (downsTasks != null && downsTasks.containsKey(globalStreamId) && !downsTasks.get(globalStreamId).isEmpty()) {
@@ -238,14 +238,14 @@ public class TaskReceiver {
                         }
                     }
 
-                    if (LOG.isInfoEnabled()) {
+                    if (LOG.isDebugEnabled()) {
                         StringBuilder sb = new StringBuilder("Sending downstream message from task ").append(topologyContext.getThisTaskId()).append(" [");
                         sb.append("inner tasks: ").append(innerTaskTextMsg).append(" outer tasks: ").append(outerTaskTextMsg);
                         sb.append("]");
-                        LOG.info(sb.toString());
+                        LOG.debug(sb.toString());
                     }
                 } else {
-                    LOG.info("No Downstream task for message with stream ID: " + globalStreamId);
+                    LOG.debug("No Downstream task for message with stream ID: " + globalStreamId);
                     exeQueue.publish(tuple);
                 }
             }

@@ -140,16 +140,16 @@ public class TaskTransfer {
 
         // first check weather we need to skip
         if (downStreamTasks.isSkip(globalStreamId, sourceTaskId, targetTaskId)) {
-            LOG.info("Skipping transfer of tuple {} --> {}", sourceTaskId, targetTaskId);
+            LOG.debug("Skipping transfer of tuple {} --> {}", sourceTaskId, targetTaskId);
             return;
         }
 
         // we will get the target is no mapping
         int mapping = downStreamTasks.getMapping(globalStreamId, sourceTaskId, targetTaskId);
-        LOG.info("Got a mapping of task transfer {} --> {}", targetTaskId, mapping);
+        LOG.debug("Got a mapping of task transfer {} --> {}", targetTaskId, mapping);
         DisruptorQueue exeQueue = innerTaskTransfer.get(mapping);
         if (exeQueue != null) {
-            LOG.info("Transferring tuple via memory {} --> {}", sourceTaskId, targetTaskId);
+            LOG.debug("Transferring tuple via memory {} --> {}", sourceTaskId, targetTaskId);
             // in this case we are not going to hit TaskReceiver, so we need to do what we did there
             // lets determine weather we need to send this message to other tasks as well acting as an intermediary
             Map<GlobalStreamId, Set<Integer>> downsTasks = downStreamTasks.allDownStreamTasks(mapping);
@@ -178,18 +178,18 @@ public class TaskTransfer {
                     }
                 }
 
-                if (LOG.isInfoEnabled()) {
+                if (LOG.isDebugEnabled()) {
                     StringBuilder sb = new StringBuilder("Sending downstream message from task ").append(taskId).append(" [");
                     sb.append("inner tasks: ").append(innerTaskTextMsg).append(" outer tasks: ").append(outerTaskTextMsg);
                     sb.append("]");
                     LOG.info(sb.toString());
                 }
             } else {
-                LOG.info("No Downstream task for message with stream ID: " + globalStreamId);
+                LOG.debug("No Downstream task for message with stream ID: " + globalStreamId);
                 exeQueue.publish(tuple);
             }
         } else {
-            LOG.info("Transferring tuple via network {} --> {}", sourceTaskId, targetTaskId);
+            LOG.debug("Transferring tuple via network {} --> {}", sourceTaskId, targetTaskId);
             serializeQueue.publish(tuple);
         }
     }
