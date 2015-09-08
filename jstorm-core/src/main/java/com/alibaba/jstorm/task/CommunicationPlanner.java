@@ -111,7 +111,7 @@ public class CommunicationPlanner {
                     // query the tree to get the broad cast tasks
                     Set<Integer> allChildTasks = allTree.getChildTasks(taskId);
                     downStreamTasks.addCollectiveTree(new GlobalStreamId(componentId, stream), allTree);
-                } else if (Grouping._Fields.SHUFFLE.equals(Thrift.groupingType(g))) {
+                } /*else if (Grouping._Fields.SHUFFLE.equals(Thrift.groupingType(g))) {
                     // lets process the shuffle operation
                     List<Integer> bCastTasks = context.getComponentTasks(id);
                     shuffleRootTasks.addAll(bCastTasks);
@@ -125,7 +125,7 @@ public class CommunicationPlanner {
                     CommunicationTree shuffleTree = new CommunicationTree(conf, shuffleRootTasks, mappings, false);
 //                    Set<Integer> shuffleChildTasks = shuffleTree.getChildTasks(taskId);
                     downStreamTasks.addCollectiveTree(new GlobalStreamId(componentId, stream), shuffleTree);
-                }
+                }*/
             }
         }
 
@@ -153,7 +153,7 @@ public class CommunicationPlanner {
                 // query the tree to get the broadcast tasks
 //                Set<Integer> childTasks = tree.getChildTasks(taskId);
                 downStreamTasks.addCollectiveTree(sourceGlobalStreamId, tree);
-            } else if (Grouping._Fields.SHUFFLE.equals(Thrift.groupingType(g))) {
+            } /*else if (Grouping._Fields.SHUFFLE.equals(Thrift.groupingType(g))) {
                 // calculate for SHUFFLE operation
                 Set<Integer> componentTasks = new HashSet<Integer>(context.getComponentTasks(componentId));
                 Set<Integer> shuffleTasks = new TreeSet<Integer>();
@@ -165,7 +165,7 @@ public class CommunicationPlanner {
                 // query the tree to get the broadcast tasks
 //                Set<Integer> childTasks = tree.getChildTasks(taskId);
                 downStreamTasks.addCollectiveTree(sourceGlobalStreamId, tree);
-            }
+            }*/
         }
 
         StringBuilder sb = new StringBuilder("");
