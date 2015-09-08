@@ -189,11 +189,11 @@ public class Task {
         if (isTaskBatchTuple)
             taskTransfer =
                     new TaskBatchTransfer(this, taskName, serializer,
-                            taskStatus, workerData);
+                            taskStatus, workerData, taskid);
         else
             taskTransfer =
                     new TaskTransfer(this, taskName, serializer, taskStatus,
-                            workerData);
+                            workerData, taskid);
         return taskTransfer;
     }
 

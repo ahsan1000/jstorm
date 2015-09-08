@@ -224,14 +224,20 @@ public class RefreshConnections extends RunnableCallback {
                 if (workers != null && outboundTasks != null) {
                     for (ResourceWorkerSlot worker : workers) {
                         if (supervisorId.equals(worker.getNodeId())
-                                && worker.getPort() == workerData.getPort())
+                                && worker.getPort() == workerData.getPort()) {
                             localTasks.addAll(worker.getTasks());
+                            need_connections.add(worker);
+                        }
                         for (Integer id : worker.getTasks()) {
                             if (outboundTasks.contains(id)) {
                                 my_assignment.put(id, worker);
                                 need_connections.add(worker);
                             }
+                            if (supervisorId.equals(worker.getNodeId())) {
+                                my_assignment.put(id, worker);
+                            }
                         }
+
                     }
                 }
                 taskNodeport.putAll(my_assignment);

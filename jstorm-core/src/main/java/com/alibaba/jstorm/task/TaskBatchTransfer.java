@@ -52,8 +52,8 @@ public class TaskBatchTransfer extends TaskTransfer {
 
     public TaskBatchTransfer(Task task, String taskName,
             KryoTupleSerializer serializer, TaskStatus taskStatus,
-            WorkerData workerData) {
-        super(task, taskName, serializer, taskStatus, workerData);
+            WorkerData workerData, int taskId) {
+        super(task, taskName, serializer, taskStatus, workerData, taskId);
 
         batchMap = new HashMap<Integer, BatchTuple>();
         batchSize =

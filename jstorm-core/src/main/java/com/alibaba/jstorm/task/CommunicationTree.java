@@ -97,6 +97,15 @@ public class CommunicationTree {
         BTreePrinter.printNode(root);
     }
 
+    public TreeSet<Integer> taskIdsOfNode(int taskId) {
+        TreeNode treeNode = searchTree(root, taskId);
+        if (treeNode != null) {
+            return treeNode.taskIds;
+        } else {
+            return null;
+        }
+    }
+
     /**
      * Search for tree
      * @param node node of the tree
@@ -199,13 +208,13 @@ public class CommunicationTree {
     }
 
     /**
-     * After building the tree, we can use this method to query the tasks to which we need to broadcast.
+     * After building the tree, we can use this method to query the tasks to which we need to communicate.
      * 1. We will send the data to 1 worker in each node. The task in that worker will
      * broadcast the message to other workers in the same machine
      *
      * @return task ids,
      */
-    public Set<Integer> getChildTasks(int taskId) {
+    public TreeSet<Integer> getChildTasks(int taskId) {
         TreeNode t = searchTree(root, taskId);
         if (t != null) {
             if (expandingTree) {
@@ -217,10 +226,7 @@ public class CommunicationTree {
                     return treeSet;
                 } else {
                     for (Integer task : t.taskIds) {
-                        // add all the tasks other than the taskId itself
-                        if (task != first) {
-                            treeSet.add(task);
-                        }
+                        treeSet.add(task);
                     }
                 }
 

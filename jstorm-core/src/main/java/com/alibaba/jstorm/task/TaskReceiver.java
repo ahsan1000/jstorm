@@ -212,33 +212,40 @@ public class TaskReceiver {
             if (tuple != null) {
                 String streamId = tuple.getSourceStreamId();
                 String sourceCompoent = tuple.getSourceComponent();
+                int sourceTask = tuple.getSourceTask();
                 GlobalStreamId globalStreamId = new GlobalStreamId(sourceCompoent, streamId);
-                LOG.info("Received message with stream ID: " + globalStreamId);
+                LOG.info("Received message with stream ID: {} sourceTask {}", globalStreamId, sourceTask);
                 // lets determine weather we need to send this message to other tasks as well acting as an intermediary
                 Map<GlobalStreamId, Set<Integer>> downsTasks = downStreamTasks.allDownStreamTasks(taskId);
-                if (downsTasks != null && downsTasks.containsKey(globalStreamId)) {
+                if (downsTasks != null && downsTasks.containsKey(globalStreamId) && !downsTasks.get(globalStreamId).isEmpty()) {
                     // for now lets use the deserialized task and send it back... ideally we should send the byte message
                     Set<Integer> tasks = downsTasks.get(globalStreamId) ;
+                    StringBuilder innerTaskTextMsg = new StringBuilder();
+                    StringBuilder outerTaskTextMsg = new StringBuilder();
                     for (Integer task : tasks) {
-                        taskTransfer.transfer((byte[]) event, task);
+                        if (task != taskId) {
+                            outerTaskTextMsg.append(task).append(" ");
+                            DisruptorQueue exeQueueNext = innerTaskTransfer.get(task);
+                            if (exeQueueNext != null) {
+                                exeQueueNext.publish(tuple);
+                            } else {
+                                taskTransfer.transfer((byte[]) event, tuple, task);
+                            }
+                        } else {
+                            innerTaskTextMsg.append(task);
+                            exeQueue.publish(tuple);
+                        }
                     }
 
-                    //if (LOG.isDebugEnabled()) {
-                    StringBuilder sb = new StringBuilder("Sending downstream message from task ").append(topologyContext.getThisTaskId()).append("[");
-                    for (Integer task : tasks) {
-                        sb.append(task).append(", ");
+                    if (LOG.isInfoEnabled()) {
+                        StringBuilder sb = new StringBuilder("Sending downstream message from task ").append(topologyContext.getThisTaskId()).append(" [");
+                        sb.append("inner tasks: ").append(innerTaskTextMsg).append(" outer tasks: ").append(outerTaskTextMsg);
+                        sb.append("]");
+                        LOG.info(sb.toString());
                     }
-                    sb.append("]");
-                    LOG.info(sb.toString());
-                    //}
                 } else {
                     LOG.info("No Downstream task for message with stream ID: " + globalStreamId);
-                }
-                // finally we will execute the tuple here in this task
-                if (!downStreamTasks.isRelayingTuple(taskId, globalStreamId)) {
                     exeQueue.publish(tuple);
-                } else {
-                    LOG.info("TaskID: " + taskId + " act as a relaying task for: " + globalStreamId);
                 }
             }
         }

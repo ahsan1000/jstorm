@@ -9,92 +9,33 @@ public class DownstreamTasks {
 
     private Map<GlobalStreamId, List<CommunicationTree>> nonExpandingTrees = new HashMap<GlobalStreamId, List<CommunicationTree>>();
 
-    /**
-     * Given this task ID, target task and stream id, get the tasks we need to send in order to reach the target eventually
-     * @param targetTask target task
-     * @param thisId this task
-     * @param streamId stream id
-     * @return the tasks
-     */
-    public Set<Integer> getMappingTasks(int targetTask, int thisId, GlobalStreamId streamId) {
-        TreeSet<Integer> returnTasks = new TreeSet<Integer>();
-
-        List<CommunicationTree> expandingTreeList = expandingTrees.get(streamId);
-        // we found this in an expanding list
-        if (expandingTreeList != null) {
-            for (CommunicationTree tree : expandingTreeList) {
-                Set<Integer> downsTreamTasks = tree.getChildTasks(thisId);
-                if (downsTreamTasks.contains(targetTask)) {
-                    returnTasks.add(targetTask);
-                }
-            }
-        }
-
-        // now go through the non expanding list
-        List<CommunicationTree> nonExpandingTreeList = nonExpandingTrees.get(streamId);
-        if (nonExpandingTreeList != null) {
-            for (CommunicationTree tree : nonExpandingTreeList) {
-                Set<Integer> rootTasks = tree.rootTasks();
-                if (rootTasks.contains(targetTask)) {
-                    Set<Integer> downStreamTasks = tree.getChildTasks(thisId);
-                    returnTasks.addAll(downStreamTasks);
-                }
-            }
-        }
-
-        return returnTasks;
-    }
-
-    /**
-     * Return true if this task only relays the tuple without acting on it
-     * @param taskId task id
-     * @param streamId stream id
-     * @return true if task only relays the tuple
-     */
-    public boolean isRelayingTuple(int taskId, GlobalStreamId streamId) {
-        if (expandingTrees.containsKey(streamId)) {
-            List<CommunicationTree> trees = expandingTrees.get(streamId);
-            for (CommunicationTree tree : trees) {
-                if (!tree.rootTasks().contains(taskId)) {
-                    return false;
-                }
-            }
-            return true;
-        }
-
+    public int getMapping(GlobalStreamId streamId, int taskId, int targetId) {
         if (nonExpandingTrees.containsKey(streamId)) {
             List<CommunicationTree> trees = nonExpandingTrees.get(streamId);
             for (CommunicationTree tree : trees) {
-                if (tree.rootTasks().contains(taskId)) {
+                if (tree.rootTasks().contains(targetId)) {
+                    TreeSet<Integer> childTasks = tree.getChildTasks(taskId);
+                    if (!childTasks.isEmpty()) {
+                        childTasks.first();
+                    }
+                }
+            }
+        }
+        return targetId;
+    }
+
+    public boolean isSkip(GlobalStreamId streamId, int taskId, int targetId) {
+        if (expandingTrees.containsKey(streamId)) {
+            List<CommunicationTree> trees = expandingTrees.get(streamId);
+            for (CommunicationTree tree : trees) {
+                TreeSet<Integer> childTasks = tree.getChildTasks(taskId);
+                if (!childTasks.isEmpty() && childTasks.contains(targetId)) {
                     return false;
                 }
             }
             return true;
         }
         return false;
-    }
-
-    public Set<Integer> getDownstreamTask(int taskId, GlobalStreamId streamId) {
-        // first check the expanding trees
-        TreeSet<Integer> returntasks = new TreeSet<Integer>();
-        List<CommunicationTree> expandingTreeList = expandingTrees.get(streamId);
-        if (expandingTreeList != null) {
-            for (CommunicationTree tree : expandingTreeList) {
-                Set<Integer> downsTreamTasks = tree.getChildTasks(taskId);
-                returntasks.addAll(downsTreamTasks);
-            }
-        }
-
-        // now go through the non expanding list
-        List<CommunicationTree> nonExpandingTreeList = nonExpandingTrees.get(streamId);
-        if (nonExpandingTreeList != null) {
-            for (CommunicationTree tree : nonExpandingTreeList) {
-                Set<Integer> downsTreamTasks = tree.getChildTasks(taskId);
-                returntasks.addAll(downsTreamTasks);
-            }
-        }
-
-        return returntasks;
     }
 
     /**
