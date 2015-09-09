@@ -189,6 +189,7 @@ public class CommunicationTree {
             Integer w = itr.next();
             TreeSet<Integer> t = tasks.get(w);
 
+            // if worker level branching factor is < 0, then we will create a flat tree
             if (count == workerLevelBranchingFactor) {
                 parent = treeNodes.poll();
                 count = 0;
