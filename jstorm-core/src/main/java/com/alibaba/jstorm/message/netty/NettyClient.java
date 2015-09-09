@@ -153,9 +153,9 @@ class NettyClient implements IConnection {
 
         address = JStormServerUtils.getName(host, port);
         
-        if (connectMyself == false) {
+        //if (connectMyself == false) {
             registerMetrics();
-        }
+        //}
         closingChannel = new HashSet<Channel>();
     }
     
