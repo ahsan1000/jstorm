@@ -225,21 +225,22 @@ public class TaskReceiver {
                     for (Integer task : tasks) {
                         if (task != taskId) {
                             // these tasks can be in the same worker or in a different worker
-                            outerTaskTextMsg.append(task).append(" ");
                             DisruptorQueue exeQueueNext = innerTaskTransfer.get(task);
                             if (exeQueueNext != null) {
+                                innerTaskTextMsg.append(task).append(" ");
                                 exeQueueNext.publish(tuple);
                             } else {
+                                outerTaskTextMsg.append(task).append(" ");
                                 taskTransfer.transfer((byte[]) event, tuple, task);
                             }
                         } else {
-                            innerTaskTextMsg.append(task);
+                            innerTaskTextMsg.append(task).append(" ");
                             exeQueue.publish(tuple);
                         }
                     }
 
-                    if (LOG.isDebugEnabled()) {
-                        StringBuilder sb = new StringBuilder("Sending downstream message from task ").append(topologyContext.getThisTaskId()).append(" [");
+                    if (LOG.isInfoEnabled()) {
+                        StringBuilder sb = new StringBuilder("RECEIVE: Sending downstream message from task ").append(topologyContext.getThisTaskId()).append(" [");
                         sb.append("inner tasks: ").append(innerTaskTextMsg).append(" outer tasks: ").append(outerTaskTextMsg);
                         sb.append("]");
                         LOG.info(sb.toString());

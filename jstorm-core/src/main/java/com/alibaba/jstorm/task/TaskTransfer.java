@@ -162,10 +162,11 @@ public class TaskTransfer {
                     if (task != mapping) {
                         // these tasks can be in the same worker or in a different worker
                         DisruptorQueue exeQueueNext = innerTaskTransfer.get(task);
-                        outerTaskTextMsg.append(task).append(" ");
                         if (exeQueueNext != null) {
+                            innerTaskTextMsg.append(task).append(" ");
                             exeQueueNext.publish(tuple);
                         } else {
+                            outerTaskTextMsg.append(task).append(" ");
                             if (tupleMessage == null) {
                                 tupleMessage = serializer.serialize(tuple);
                             }
@@ -176,17 +177,12 @@ public class TaskTransfer {
                             }
                         }
                     } else {
-                        innerTaskTextMsg.append(task);
+                        innerTaskTextMsg.append(task).append(" ");
                         exeQueue.publish(tuple);
                     }
                 }
 
-                if (LOG.isInfoEnabled()) {
-                    StringBuilder sb = new StringBuilder("Sending downstream message from task ").append(taskId).append(" [");
-                    sb.append("inner tasks: ").append(innerTaskTextMsg).append(" outer tasks: ").append(outerTaskTextMsg);
-                    sb.append("]");
-                    LOG.info(sb.toString());
-                }
+                LOG.info("TRANSFER: Sending downstream message from task " + mapping + " [" + "inner tasks: " + innerTaskTextMsg + " outer tasks: " + outerTaskTextMsg + "]");
             } else {
                 LOG.info("No Downstream task for message with stream ID: " + globalStreamId);
                 exeQueue.publish(tuple);
