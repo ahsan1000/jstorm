@@ -31,7 +31,7 @@ public class CommunicationTree {
     /**
      * A node in the collective tree
      */
-    private class TreeNode {
+    private static class TreeNode {
         List<TreeNode> children = new ArrayList<TreeNode>();
         TreeNode parent;
         TreeSet<Integer> taskIds = new TreeSet<Integer>();
@@ -101,7 +101,7 @@ public class CommunicationTree {
         root = new TreeNode();
         root.taskIds.addAll(rootTaskId);
         buildTree(root, mappings);
-        BTreePrinter.printNode(root);
+        BTreePrinter.print(root);
     }
 
     public TreeSet<Integer> taskIdsOfNode(int taskId) {
@@ -271,92 +271,80 @@ public class CommunicationTree {
     }
 
     static class BTreePrinter {
-        public static void printNode(TreeNode root) {
-            int maxLevel = BTreePrinter.maxLevel(root);
-            LOG.info("Max level: {}", 3);
-            String out = printNodeInternal(Collections.singletonList(root), 1, maxLevel);
-            LOG.info(out);
-        }
-
-        private static String printNodeInternal(List<TreeNode> nodes, int level, int maxLevel) {
-            if (nodes.isEmpty() || BTreePrinter.isAllElementsNull(nodes))
-                return "";
-
-            int floor = maxLevel - level;
-            int endgeLines = (int) Math.pow(2, (Math.max(floor - 1, 0)));
-            int firstSpaces = (int) Math.pow(2, (floor)) - 1;
-            int betweenSpaces = (int) Math.pow(2, (floor + 1)) - 1;
-            String out = "";
-            out += BTreePrinter.printWhitespaces(firstSpaces);
-            List<TreeNode> newNodes = new ArrayList<TreeNode>();
-            for (TreeNode node : nodes) {
-                if (node != null) {
-                    out += node.taskIds;
-                    newNodes.add(node.left());
-                    newNodes.add(node.right());
-                } else {
-                    newNodes.add(null);
-                    newNodes.add(null);
-                    out += " ";
-                }
-
-                out += BTreePrinter.printWhitespaces(betweenSpaces);
-            }
-            out += "\n";
-
-            for (int i = 1; i <= endgeLines; i++) {
-                for (int j = 0; j < nodes.size(); j++) {
-                    BTreePrinter.printWhitespaces(firstSpaces - i);
-                    if (nodes.get(j) == null) {
-                        out += BTreePrinter.printWhitespaces(endgeLines + endgeLines + i + 1);
-                        continue;
+        public static String print(TreeNode root) {
+            StringBuilder sb = new StringBuilder("(");
+            int state = 0; // 0 = saw node, 1 = saw 1, 2 = saw 2
+            Queue<Object> queue = new LinkedList<Object>();
+            queue.offer(root);
+            queue.offer(1);
+            while(!queue.isEmpty()) {
+                Object t = queue.poll();
+                if (t instanceof Integer) {
+                    sb.append("\n");
+                    if (!queue.isEmpty()) {
+                        queue.add(1);
                     }
-
-                    if (nodes.get(j).left() != null)
-                        out += "/";
-                    else
-                        out += BTreePrinter.printWhitespaces(1);
-
-                    out += BTreePrinter.printWhitespaces(i + i - 1);
-
-                    if (nodes.get(j).right() != null)
-                        out+="\\";
-                    else
-                        out += BTreePrinter.printWhitespaces(1);
-
-                    out += BTreePrinter.printWhitespaces(endgeLines + endgeLines - i);
                 }
 
-                out += "\n";
+                if (t instanceof TreeNode) {
+                    printNodeInternal((TreeNode) t, sb);
+                    queue.addAll(((TreeNode) t).children);
+                }
             }
-
-            out += printNodeInternal(newNodes, level + 1, maxLevel);
-            return out;
+            return sb.toString();
         }
 
-        private static String printWhitespaces(int count) {
-            String s = "";
-            for (int i = 0; i < count; i++)
-                s += (" ");
-
-            return s;
-        }
-
-        private static <T extends Comparable<?>> int maxLevel(TreeNode node) {
-            if (node == null)
-                return 0;
-
-            return Math.max(BTreePrinter.maxLevel(node.left()), BTreePrinter.maxLevel(node.right())) + 1;
-        }
-
-        private static <T> boolean isAllElementsNull(List<T> list) {
-            for (Object object : list) {
-                if (object != null)
-                    return false;
+        private static void printNodeInternal(TreeNode node, StringBuilder sb) {
+            sb.append("[");
+            for (Integer t : node.taskIds) {
+                sb.append(t).append(" ");
             }
-
-            return true;
+            sb.append("]");
         }
+    }
 
+
+    public static void main(String[] args) {
+        TreeNode root = new TreeNode();
+        root.taskIds.add(1);
+
+        TreeNode ch1 = new TreeNode();
+        ch1.taskIds.add(2);
+
+        TreeNode ch2 = new TreeNode();
+        ch2.taskIds.add(3);
+
+        TreeNode ch3 = new TreeNode();
+        ch3.taskIds.add(4);
+
+        TreeNode ch4 = new TreeNode();
+        ch4.taskIds.add(5);
+
+        TreeNode ch5 = new TreeNode();
+        ch5.taskIds.add(6);
+
+        TreeNode ch6 = new TreeNode();
+        ch6.taskIds.add(7);
+
+        TreeNode ch7 = new TreeNode();
+        ch7.taskIds.add(8);
+
+        TreeNode ch8 = new TreeNode();
+        ch8.taskIds.add(9);
+
+        root.children.add(ch1);
+        root.children.add(ch2);
+
+        ch1.children.add(ch3);
+        ch1.children.add(ch4);
+
+        ch2.children.add(ch5);
+        ch2.children.add(ch6);
+
+        ch3.children.add(ch7);
+        ch4.children.add(ch8);
+
+        String s = BTreePrinter.print(root);
+        System.out.println(s);
     }
 }
