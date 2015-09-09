@@ -80,9 +80,15 @@ public class CommunicationTree {
         Boolean useFlatTree = (Boolean) conf.get(Config.COLLECTIVE_USE_FLAT_TREE);
 
         LOG.info("Collective tree: " + sb.toString());
-        Integer workerLevelBranching = (Integer) conf.get(Config.COLLECTIVE_WORKER_BRANCHING_FACTOR);
+        Object workerLevelBranching = conf.get(Config.COLLECTIVE_WORKER_BRANCHING_FACTOR);
         if (workerLevelBranching != null) {
-            this.workerLevelBranchingFactor = workerLevelBranching;
+            if (workerLevelBranching instanceof Integer) {
+                this.workerLevelBranchingFactor = (int) workerLevelBranching;
+            }
+            if (workerLevelBranching instanceof Long) {
+                long w = (long) workerLevelBranching;
+                this.workerLevelBranchingFactor = (int) w;
+            }
         }
 
         Integer nodeLevelBranching = (Integer) conf.get(Config.COLLECTIVE_NODE_BRANCHING_FACTOR);

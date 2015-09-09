@@ -140,7 +140,7 @@ public class TaskTransfer {
 
         // first check weather we need to skip
         if (downStreamTasks.isSkip(globalStreamId, sourceTaskId, targetTaskId)) {
-            LOG.debug("Skipping transfer of tuple {} --> {}", sourceTaskId, targetTaskId);
+            LOG.info("Skipping transfer of tuple {} --> {}", sourceTaskId, targetTaskId);
             return;
         }
 
