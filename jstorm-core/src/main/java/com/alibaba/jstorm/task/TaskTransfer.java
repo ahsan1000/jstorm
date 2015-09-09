@@ -157,6 +157,7 @@ public class TaskTransfer {
                 Set<Integer> tasks = downsTasks.get(globalStreamId) ;
                 StringBuilder innerTaskTextMsg = new StringBuilder();
                 StringBuilder outerTaskTextMsg = new StringBuilder();
+                byte[] tupleMessage = null;
                 for (Integer task : tasks) {
                     if (task != mapping) {
                         // these tasks can be in the same worker or in a different worker
@@ -165,7 +166,9 @@ public class TaskTransfer {
                         if (exeQueueNext != null) {
                             exeQueueNext.publish(tuple);
                         } else {
-                            byte[] tupleMessage = serializer.serialize(tuple);
+                            if (tupleMessage == null) {
+                                tupleMessage = serializer.serialize(tuple);
+                            }
                             TaskMessage taskMessage = new TaskMessage(task, tupleMessage);
                             IConnection conn = getConnection(task);
                             if (conn != null) {
