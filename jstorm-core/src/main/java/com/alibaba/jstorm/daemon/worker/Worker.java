@@ -29,6 +29,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import backtype.storm.generated.GlobalStreamId;
+import com.alibaba.jstorm.utils.*;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,12 +55,9 @@ import com.alibaba.jstorm.metric.JStormMetricsReporter;
 import com.alibaba.jstorm.task.Task;
 import com.alibaba.jstorm.task.TaskShutdownDameon;
 import com.alibaba.jstorm.task.heartbeat.TaskHeartbeatRunable;
-import com.alibaba.jstorm.utils.JStormServerUtils;
-import com.alibaba.jstorm.utils.JStormUtils;
-import com.alibaba.jstorm.utils.NetWorkUtils;
-import com.alibaba.jstorm.utils.PathUtils;
 import com.lmax.disruptor.WaitStrategy;
 import com.lmax.disruptor.dsl.ProducerType;
+import storm.trident.graph.Group;
 
 /**
  * worker entrance
@@ -113,6 +112,17 @@ public class Worker {
                 for (String componentId : e.keySet()) {
                     List<Integer> tasks =
                             context.getComponentTasks(componentId);
+                    rtn.addAll(tasks);
+                }
+            }
+
+            // if we are connected by a ALL task, we need to have connections to other tasks
+            Map<GlobalStreamId, Grouping> sources = context.getThisSources();
+            for (Map.Entry<GlobalStreamId, Grouping> e : sources.entrySet()) {
+                Grouping grouping = e.getValue();
+                if (Grouping._Fields.ALL.equals(Thrift.groupingType(grouping))) {
+                    List<Integer> tasks =
+                            context.getComponentTasks(context.getThisComponentId());
                     rtn.addAll(tasks);
                 }
             }
