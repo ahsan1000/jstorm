@@ -87,7 +87,7 @@ public class CommunicationTree {
 
         Integer nodeLevelBranching = (Integer) conf.get(Config.COLLECTIVE_NODE_BRANCHING_FACTOR);
         // if we are going to use a flat tree no level branching factor should be the size of supervisors
-        if (useFlatTree) {
+        if (useFlatTree != null && useFlatTree) {
             this.nodeLevelBranchingFactor = mappings.size();
         } else {
             if (nodeLevelBranching != null) {
@@ -156,7 +156,7 @@ public class CommunicationTree {
         while (itr.hasNext()) {
             String nodes = itr.next();
             TreeMap<Integer, TreeSet<Integer>> workers = tasks.get(nodes);
-            TreeNode n = buildTreeOfNode(p, workers);
+            TreeNode n = buildTreeOfNode(workers);
             p.children.add(n);
             treeNodes.offer(n);
             nodeCount++;
@@ -170,48 +170,45 @@ public class CommunicationTree {
 
     /**
      * Build the part of the tree specific to the node
-     * @param parent parent node
      * @param tasks worker to task mapping in this node, all these tasks are connected using collective operations
      * @return the first node of this sub tree
      */
-    private TreeNode buildTreeOfNode(TreeNode parent, TreeMap<Integer, TreeSet<Integer>> tasks) {
+    private TreeNode buildTreeOfNode(TreeMap<Integer, TreeSet<Integer>> tasks) {
         NavigableSet<Integer> treeMap = tasks.navigableKeySet();
         Iterator<Integer> itr = treeMap.iterator();
 
-        TreeNode returnParent = null;
+        TreeNode nodeRoot = new TreeNode();
 
-        int count = 0;
-        int level = 0;
+        int count = workerLevelBranchingFactor;
+        boolean root = true;
         Queue<TreeNode> treeNodes = new LinkedList<TreeNode>();
-        TreeNode p = parent;
+        treeNodes.add(nodeRoot);
+        TreeNode parent = null;
+
         while (itr.hasNext()) {
             Integer w = itr.next();
             TreeSet<Integer> t = tasks.get(w);
 
-            TreeNode treeNode = new TreeNode();
-            treeNode.parent = p;
-
-            p.children.add(treeNode);
-            treeNode.taskIds.addAll(t);
-            count++;
-            treeNodes.offer(treeNode);
-
-            if (level == 0) {
-                returnParent = treeNode;
-                level++;
+            if (count == workerLevelBranchingFactor) {
+                parent = treeNodes.poll();
                 count = 0;
-                p = treeNodes.poll();
-                continue;
             }
 
-            // we are done with this node
-            if (count == workerLevelBranchingFactor) {
-                count = 0;
-                p = treeNodes.poll();
+            // we need to do some special processing for root
+            if (root) {
+                parent.taskIds.addAll(t);
+                root = false;
+            } else {
+                TreeNode node = new TreeNode();
+                node.taskIds.addAll(t);
+                // add the node to parent
+                node.parent = parent;
+                parent.children.add(node);
+                treeNodes.offer(node);
+                count++;
             }
         }
-
-        return returnParent;
+        return nodeRoot;
     }
 
     /**
