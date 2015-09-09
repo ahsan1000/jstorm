@@ -1416,7 +1416,7 @@ public class Config extends HashMap<String, Object> {
     /**
      * Weather we are going to use a flat tree or not
      */
-    public static final String COLLECTIVE_USE_FLAT_TREE = "topology.collective.worker.branch";
+    public static final String COLLECTIVE_USE_FLAT_TREE = "topology.collective.use.flaTree";
 
     public static void setClasspath(Map conf, String cp) {
         conf.put(Config.TOPOLOGY_CLASSPATH, cp);
