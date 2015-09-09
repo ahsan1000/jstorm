@@ -77,6 +77,7 @@ public class CommunicationTree {
         String s = CommunicationPlanner.printMappings(mappings);
         sb.append("Mappings: ").append(s);
 
+        Boolean useFlatTree = (Boolean) conf.get(Config.COLLECTIVE_USE_FLAT_TREE);
 
         LOG.info("Collective tree: " + sb.toString());
         Integer workerLevelBranching = (Integer) conf.get(Config.COLLECTIVE_WORKER_BRANCHING_FACTOR);
@@ -85,9 +86,15 @@ public class CommunicationTree {
         }
 
         Integer nodeLevelBranching = (Integer) conf.get(Config.COLLECTIVE_NODE_BRANCHING_FACTOR);
-        if (nodeLevelBranching != null) {
-            this.nodeLevelBranchingFactor = nodeLevelBranching;
+        // if we are going to use a flat tree no level branching factor should be the size of supervisors
+        if (useFlatTree) {
+            this.nodeLevelBranchingFactor = mappings.size();
+        } else {
+            if (nodeLevelBranching != null) {
+                this.nodeLevelBranchingFactor = nodeLevelBranching;
+            }
         }
+
         LOG.info("NodeLevel branching: {}, WorkerLevel Branching: {}", this.nodeLevelBranchingFactor, this.workerLevelBranchingFactor);
         this.expandingTree = expandingTree;
 

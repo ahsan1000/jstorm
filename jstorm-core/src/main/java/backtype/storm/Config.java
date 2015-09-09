@@ -1413,6 +1413,11 @@ public class Config extends HashMap<String, Object> {
      */
     public static final String COLLECTIVE_WORKER_BRANCHING_FACTOR = "topology.collective.worker.branch";
 
+    /**
+     * Weather we are going to use a flat tree or not
+     */
+    public static final String COLLECTIVE_USE_FLAT_TREE = "topology.collective.worker.branch";
+
     public static void setClasspath(Map conf, String cp) {
         conf.put(Config.TOPOLOGY_CLASSPATH, cp);
     }
