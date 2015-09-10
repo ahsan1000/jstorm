@@ -1,10 +1,7 @@
 package com.alibaba.jstorm.daemon.worker;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -143,7 +140,7 @@ public class RefreshConnections extends RunnableCallback {
 				workerData.setLocalNodeTasks(localNodeTasks);
 
 				// get which connection need to be remove or add
-				Set<WorkerSlot> current_connections = nodeportSocket.keySet();
+				Set<WorkerSlot> current_connections = new HashSet<WorkerSlot>(Collections.list(nodeportSocket.keys()));
 				Set<WorkerSlot> new_connections = new HashSet<WorkerSlot>();
 				Set<WorkerSlot> remove_connections = new HashSet<WorkerSlot>();
 
