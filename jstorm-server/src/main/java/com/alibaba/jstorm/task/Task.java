@@ -198,7 +198,7 @@ public class Task {
 				return new MultipleThreadSpoutExecutors((ISpout) taskObj, taskTransfer,
 						innerTaskTransfer, stormConf, deserializeQueue, sendTargets,
 						taskStatus, topologyContext, userContext, taskStats,
-						report_error);
+						report_error, downStreamTasks);
 			}
 		}
 
