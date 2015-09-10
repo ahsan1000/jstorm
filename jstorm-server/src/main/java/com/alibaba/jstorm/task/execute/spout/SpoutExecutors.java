@@ -2,6 +2,7 @@ package com.alibaba.jstorm.task.execute.spout;
 
 import java.util.Map;
 
+import com.alibaba.jstorm.task.DownstreamTasks;
 import org.apache.log4j.Logger;
 
 import backtype.storm.Config;
@@ -64,10 +65,10 @@ public class SpoutExecutors extends BaseExecutors implements EventHandler {
 			DisruptorQueue _puller, TaskSendTargets sendTargets,
 			TaskStatus taskStatus, TopologyContext topology_context,
 			TopologyContext _user_context, CommonStatsRolling _task_stats,
-			ITaskReportErr _report_error) {
+			ITaskReportErr _report_error, DownstreamTasks downstreamTasks) {
 		super(_transfer_fn, _storm_conf, _puller, innerTaskTransfer,
 				topology_context, _user_context, _task_stats, taskStatus,
-				_report_error);
+				_report_error, downstreamTasks);
 
 		this.spout = _spout;
 

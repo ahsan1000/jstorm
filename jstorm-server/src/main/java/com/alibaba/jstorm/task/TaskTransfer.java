@@ -1,8 +1,9 @@
 package com.alibaba.jstorm.task;
 
 import java.util.Map;
+import java.util.Set;
 
-import org.apache.log4j.Logger;
+import backtype.storm.generated.GlobalStreamId;
 
 import backtype.storm.Config;
 import backtype.storm.messaging.TaskMessage;
@@ -21,6 +22,8 @@ import com.alibaba.jstorm.metric.Metrics;
 import com.lmax.disruptor.EventHandler;
 import com.lmax.disruptor.WaitStrategy;
 import com.lmax.disruptor.dsl.ProducerType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Sending entrance
@@ -34,7 +37,7 @@ import com.lmax.disruptor.dsl.ProducerType;
  */
 public class TaskTransfer {
 
-	private static Logger LOG = Logger.getLogger(TaskTransfer.class);
+	private static Logger LOG = LoggerFactory.getLogger(TaskTransfer.class);
 
 	private Map storm_conf;
 	private DisruptorQueue transferQueue;
@@ -45,6 +48,8 @@ public class TaskTransfer {
 	private volatile TaskStatus taskStatus;
 	private String taskName;
 	private JStormTimer  timer;
+    // broadcast tasks for each stream
+    private DownstreamTasks downStreamTasks;
 
 	public TaskTransfer(String taskName, 
 			KryoTupleSerializer serializer, TaskStatus taskStatus,
@@ -74,17 +79,72 @@ public class TaskTransfer {
 
 	}
 
+    public void setDownStreamTasks(DownstreamTasks downStreamTasks) {
+        this.downStreamTasks = downStreamTasks;
+    }
+
+    public void transfer(byte []tuple, int task) {
+        TaskMessage taskMessage = new TaskMessage(task, tuple);
+        transferQueue.publish(taskMessage);
+    }
+
 	public void transfer(TupleExt tuple) {
+        long time = System.currentTimeMillis();
+        try {
+            int targetTaskId = tuple.getTargetTaskId();
+            // this is equal to taskId
+            int sourceTaskId = tuple.getSourceTask();
+            GlobalStreamId globalStreamId = new GlobalStreamId(tuple.getSourceComponent(), tuple.getSourceStreamId());
 
-		int taskid = tuple.getTargetTaskId();
+            // first check weather we need to skip
+            if (downStreamTasks.isSkip(globalStreamId, sourceTaskId, targetTaskId)) {
+                LOG.info("Skipping transfer of tuple {} --> {}", sourceTaskId, targetTaskId);
+                return;
+            }
 
-		DisruptorQueue exeQueue = innerTaskTransfer.get(taskid);
-		if (exeQueue != null) {
-			exeQueue.publish(tuple);
-		} else {
-			serializeQueue.publish(tuple);
-		}
+            // we will get the target is no mapping
+            int mapping = downStreamTasks.getMapping(globalStreamId, sourceTaskId, targetTaskId);
+            LOG.info("Got a mapping of task transfer {} --> {}", targetTaskId, mapping);
+            DisruptorQueue exeQueue = innerTaskTransfer.get(mapping);
+            if (exeQueue != null) {
+                LOG.info("Transferring tuple via memory {} --> {}", sourceTaskId, targetTaskId);
+                // in this case we are not going to hit TaskReceiver, so we need to do what we did there
+                // lets determine weather we need to send this message to other tasks as well acting as an intermediary
+                Map<GlobalStreamId, Set<Integer>> downsTasks = downStreamTasks.allDownStreamTasks(mapping);
+                if (downsTasks != null && downsTasks.containsKey(globalStreamId) && !downsTasks.get(globalStreamId).isEmpty()) {
+                    Set<Integer> tasks = downsTasks.get(globalStreamId);
+                    StringBuilder innerTaskTextMsg = new StringBuilder();
+                    StringBuilder outerTaskTextMsg = new StringBuilder();
+                    byte[] tupleMessage = null;
+                    for (Integer task : tasks) {
+                        if (task != mapping) {
+                            // these tasks can be in the same worker or in a different worker
+                            DisruptorQueue exeQueueNext = innerTaskTransfer.get(task);
+                            if (exeQueueNext != null) {
+                                innerTaskTextMsg.append(task).append(" ");
+                                exeQueueNext.publish(tuple);
+                            } else {
+                                outerTaskTextMsg.append(task).append(" ");
+                                serializeQueue.publish(tuple);
+                            }
+                        } else {
+                            innerTaskTextMsg.append(task).append(" ");
+                            exeQueue.publish(tuple);
+                        }
+                    }
 
+                    LOG.info("TRANSFER: Sending downstream message from task " + mapping + " [" + "inner tasks: " + innerTaskTextMsg + " outer tasks: " + outerTaskTextMsg + "]");
+                } else {
+                    LOG.info("No Downstream task for message with stream ID: " + globalStreamId);
+                    exeQueue.publish(tuple);
+                }
+            } else {
+                LOG.info("Transferring tuple via network {} --> {}", sourceTaskId, targetTaskId);
+                serializeQueue.publish(tuple);
+            }
+        } finally {
+            LOG.info("TRANSFER TIME *****: " + (System.currentTimeMillis() - time));
+        }
 	}
 
 	public AsyncLoopThread getSerializeThread() {

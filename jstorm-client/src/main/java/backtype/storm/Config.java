@@ -1209,6 +1209,23 @@ public class Config extends HashMap<String, Object> {
      */
     public static final Object TOPOLOGY_HDFS_URI = "topology.hdfs.uri";
     public static final Object TOPOLOGY_HDFS_URI_SCHEMA = String.class;
+
+    /**
+     * Collective communication constants
+     */
+    /**
+     * Defines the branching factor for broadcast operations, at the supervisor level
+     */
+    public static final String COLLECTIVE_NODE_BRANCHING_FACTOR = "topology.collective.node.branch";
+    /**
+     * Defines the branching factor for broadcast operations at the worker level in a single machine
+     */
+    public static final String COLLECTIVE_WORKER_BRANCHING_FACTOR = "topology.collective.worker.branch";
+
+    /**
+     * Weather we are going to use a flat tree or not
+     */
+    public static final String COLLECTIVE_USE_FLAT_TREE = "topology.collective.use.flaTree";
 	
 	public static void setDebug(Map conf, boolean isOn) {
 		conf.put(Config.TOPOLOGY_DEBUG, isOn);

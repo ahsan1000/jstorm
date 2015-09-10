@@ -1,8 +1,10 @@
 package com.alibaba.jstorm.task.execute;
 
 import java.util.Map;
+import java.util.Set;
 
-import org.apache.log4j.Logger;
+import backtype.storm.generated.GlobalStreamId;
+import com.alibaba.jstorm.task.DownstreamTasks;
 
 import backtype.storm.Config;
 import backtype.storm.Constants;
@@ -31,6 +33,8 @@ import com.alibaba.jstorm.utils.JStormUtils;
 import com.lmax.disruptor.EventHandler;
 import com.lmax.disruptor.WaitStrategy;
 import com.lmax.disruptor.dsl.ProducerType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Base executor share between spout and bolt
@@ -40,7 +44,7 @@ import com.lmax.disruptor.dsl.ProducerType;
  * 
  */
 public class BaseExecutors extends RunnableCallback {
-	private static Logger LOG = Logger.getLogger(BaseExecutors.class);
+	private static Logger LOG = LoggerFactory.getLogger(BaseExecutors.class);
 
 	protected final String component_id;
 	protected final int taskId;
@@ -68,9 +72,12 @@ public class BaseExecutors extends RunnableCallback {
 
 	protected DisruptorQueue exeQueue;
 	protected Map<Integer, DisruptorQueue> innerTaskTransfer;
-	
-	
 
+    // if this task works as a broadcast intermediary, what are the tasks we need to relay this message
+    // the tasks are grouped with stream id
+    protected DownstreamTasks downStreamTasks;
+
+    protected TaskTransfer taskTransfer;
 	// protected IntervalCheck intervalCheck = new IntervalCheck();
 
 	public BaseExecutors(TaskTransfer _transfer_fn, Map _storm_conf,
@@ -78,7 +85,7 @@ public class BaseExecutors extends RunnableCallback {
 			Map<Integer, DisruptorQueue> innerTaskTransfer,
 			TopologyContext topology_context, TopologyContext _user_context,
 			CommonStatsRolling _task_stats, TaskStatus taskStatus,
-			ITaskReportErr _report_error) {
+			ITaskReportErr _report_error, DownstreamTasks downstreamTasks) {
 
 		this.storm_conf = _storm_conf;
 		this.deserializeQueue = deserializeQueue;
@@ -89,6 +96,8 @@ public class BaseExecutors extends RunnableCallback {
 		this.innerTaskTransfer = innerTaskTransfer;
 		this.component_id = topology_context.getThisComponentId();
 		this.idStr = JStormServerUtils.getName(component_id, taskId);
+        this.downStreamTasks = downstreamTasks;
+        this.taskTransfer = _transfer_fn;
 
 		this.taskStatus = taskStatus;
 		this.report_error = _report_error;
@@ -256,9 +265,52 @@ public class BaseExecutors extends RunnableCallback {
 				throws Exception {
 			Tuple tuple = deserialize((byte[]) event);
 
-			if (tuple != null) {
-				exeQueue.publish(tuple);
-			}
+            long time = System.currentTimeMillis();
+            try {
+                if (tuple != null) {
+                    String streamId = tuple.getSourceStreamId();
+                    String sourceCompoent = tuple.getSourceComponent();
+                    int sourceTask = tuple.getSourceTask();
+                    GlobalStreamId globalStreamId = new GlobalStreamId(sourceCompoent, streamId);
+                    LOG.info("Received message with stream ID: {} sourceTask {}", globalStreamId, sourceTask);
+                    // lets determine weather we need to send this message to other tasks as well acting as an intermediary
+                    Map<GlobalStreamId, Set<Integer>> downsTasks = downStreamTasks.allDownStreamTasks(taskId);
+                    if (downsTasks != null && downsTasks.containsKey(globalStreamId) && !downsTasks.get(globalStreamId).isEmpty()) {
+                        // for now lets use the deserialized task and send it back... ideally we should send the byte message
+                        Set<Integer> tasks = downsTasks.get(globalStreamId);
+                        StringBuilder innerTaskTextMsg = new StringBuilder();
+                        StringBuilder outerTaskTextMsg = new StringBuilder();
+                        for (Integer task : tasks) {
+                            if (task != taskId) {
+                                // these tasks can be in the same worker or in a different worker
+                                DisruptorQueue exeQueueNext = innerTaskTransfer.get(task);
+                                if (exeQueueNext != null) {
+                                    innerTaskTextMsg.append(task).append(" ");
+                                    exeQueueNext.publish(tuple);
+                                } else {
+                                    outerTaskTextMsg.append(task).append(" ");
+                                    taskTransfer.transfer((byte[]) event, task);
+                                }
+                            } else {
+                                innerTaskTextMsg.append(task).append(" ");
+                                exeQueue.publish(tuple);
+                            }
+                        }
+
+                        if (LOG.isInfoEnabled()) {
+                            StringBuilder sb = new StringBuilder("RECEIVE: Sending downstream message from task ").append(userTopologyCtx.getThisTaskId()).append(" [");
+                            sb.append("inner tasks: ").append(innerTaskTextMsg).append(" outer tasks: ").append(outerTaskTextMsg);
+                            sb.append("]");
+                            LOG.info(sb.toString());
+                        }
+                    } else {
+                        LOG.info("No Downstream task for message with stream ID: " + globalStreamId);
+                        exeQueue.publish(tuple);
+                    }
+                }
+            } finally {
+                LOG.info("TRANSFER TIME *****: " + (System.currentTimeMillis() - time));
+            }
 		}
 
 		@Override

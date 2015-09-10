@@ -80,6 +80,9 @@ public class Task {
 	private WorkerData workerData;
 	private String componentType; //"spout" or "bolt"
 
+    // collective communication planner
+    private CommunicationPlanner ccPlanner;
+
 	@SuppressWarnings("rawtypes")
 	public Task(WorkerData workerData, int taskId) throws Exception {
 		openOrPrepareWasCalled = new Atom(Boolean.valueOf(false));
@@ -92,8 +95,9 @@ public class Task {
 				workerData.getRawTopology(), taskId, openOrPrepareWasCalled);
 		this.taskid = taskId;
 		this.componentid = topologyContext.getThisComponentId();
+        this.ccPlanner = new CommunicationPlanner(workerData);
 
-		this.taskStatus = new TaskStatus();
+        this.taskStatus = new TaskStatus();
 		this.taskTransfer = getSendingTransfer(workerData);
 		this.innerTaskTransfer = workerData.getInnerTaskTransfer();
 		this.deserializeQueues = workerData.getDeserializeQueues();
@@ -177,18 +181,19 @@ public class Task {
 
 	public RunnableCallback mk_executors(DisruptorQueue deserializeQueue,
 			TaskSendTargets sendTargets, ITaskReportErr report_error) {
-
+        DownstreamTasks downStreamTasks = ccPlanner.getDownStreamTasks(topologyContext, componentid);
+        taskTransfer.setDownStreamTasks(downStreamTasks);
 		if (taskObj instanceof IBolt) {
 			return new BoltExecutors((IBolt) taskObj, taskTransfer,
 					innerTaskTransfer, stormConf, deserializeQueue, sendTargets,
 					taskStatus, topologyContext, userContext, taskStats,
-					report_error);
+					report_error, downStreamTasks);
 		} else if (taskObj instanceof ISpout) {
 			if (isSingleThread(stormConf) == true) {
 				return new SingleThreadSpoutExecutors((ISpout) taskObj, taskTransfer,
 						innerTaskTransfer, stormConf, deserializeQueue, sendTargets,
 						taskStatus, topologyContext, userContext, taskStats,
-						report_error);
+						report_error, downStreamTasks);
 			}else {
 				return new MultipleThreadSpoutExecutors((ISpout) taskObj, taskTransfer,
 						innerTaskTransfer, stormConf, deserializeQueue, sendTargets,

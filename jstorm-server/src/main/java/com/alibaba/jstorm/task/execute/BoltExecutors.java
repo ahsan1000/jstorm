@@ -3,6 +3,7 @@ package com.alibaba.jstorm.task.execute;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import com.alibaba.jstorm.task.DownstreamTasks;
 import org.apache.log4j.Logger;
 
 import backtype.storm.Config;
@@ -57,11 +58,11 @@ public class BoltExecutors extends BaseExecutors implements EventHandler {
 			DisruptorQueue deserializeQueue, TaskSendTargets _send_fn,
 			TaskStatus taskStatus, TopologyContext sysTopologyCxt,
 			TopologyContext userTopologyCxt, CommonStatsRolling _task_stats,
-			ITaskReportErr _report_error) {
+			ITaskReportErr _report_error, DownstreamTasks downstreamTasks) {
 
 		super(_transfer_fn, storm_conf, deserializeQueue, innerTaskTransfer,
 				sysTopologyCxt, userTopologyCxt, _task_stats, taskStatus,
-				_report_error);
+				_report_error, downstreamTasks);
 
 		this.bolt = _bolt;
 

@@ -12,6 +12,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import backtype.storm.generated.GlobalStreamId;
+import com.alibaba.jstorm.utils.Thrift;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
@@ -95,6 +97,17 @@ public class Worker {
 					rtn.addAll(tasks);
 				}
 			}
+
+            // if we are connected by a ALL task, we need to have connections to other tasks
+            Map<GlobalStreamId, Grouping> sources = context.getThisSources();
+            for (Map.Entry<GlobalStreamId, Grouping> e : sources.entrySet()) {
+                Grouping grouping = e.getValue();
+                if (Grouping._Fields.ALL.equals(Thrift.groupingType(grouping))) {
+                    List<Integer> tasks =
+                            context.getComponentTasks(context.getThisComponentId());
+                    rtn.addAll(tasks);
+                }
+            }
 		}
 
 		return rtn;

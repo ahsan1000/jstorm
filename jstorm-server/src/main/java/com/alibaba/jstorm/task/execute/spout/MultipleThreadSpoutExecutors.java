@@ -2,6 +2,7 @@ package com.alibaba.jstorm.task.execute.spout;
 
 import java.util.Map;
 
+import com.alibaba.jstorm.task.DownstreamTasks;
 import org.apache.log4j.Logger;
 
 import backtype.storm.task.TopologyContext;
@@ -40,10 +41,10 @@ public class MultipleThreadSpoutExecutors extends SpoutExecutors {
 			DisruptorQueue deserializeQueue, TaskSendTargets sendTargets,
 			TaskStatus taskStatus, TopologyContext topology_context,
 			TopologyContext _user_context, CommonStatsRolling _task_stats,
-			ITaskReportErr _report_error) {
+			ITaskReportErr _report_error, DownstreamTasks downstreamTasks) {
 		super(_spout, _transfer_fn, innerTaskTransfer, _storm_conf,
 				deserializeQueue, sendTargets, taskStatus, topology_context,
-				_user_context, _task_stats, _report_error);
+				_user_context, _task_stats, _report_error, downstreamTasks);
 
 		ackerRunnableThread = new AsyncLoopThread(new AckerRunnable());
 		pending = new RotatingMap<Long, TupleInfo>(Acker.TIMEOUT_BUCKET_NUM, null, false);
