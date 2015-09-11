@@ -273,7 +273,6 @@ public class BaseExecutors extends RunnableCallback {
                 if (tuple != null) {
                     String streamId = tuple.getSourceStreamId();
                     String sourceCompoent = tuple.getSourceComponent();
-                    LOG.error("NEW method*****************************************");
 //                    int sourceTask = tuple.getSourceTask();
                     GlobalStreamId globalStreamId = new GlobalStreamId(sourceCompoent, streamId);
                     // LOG.info("Received message with stream ID: {} sourceTask", globalStreamId);
@@ -313,6 +312,7 @@ public class BaseExecutors extends RunnableCallback {
                     }
                 }
             } else if (event instanceof TaskMessage) {
+                LOG.error("NEW method*****************************************");
                 msg = ((TaskMessage) event).message();
                 TaskMessage taskMessage = (TaskMessage) event;
                 // LOG.info("Task message stream: " + taskMessage.stream() + " component: " + taskMessage.componentId());
