@@ -312,7 +312,7 @@ public class BaseExecutors extends RunnableCallback {
                     }
                 }
             } else if (event instanceof TaskMessage) {
-                LOG.error("NEW method*****************************************");
+//                LOG.error("NEW method*****************************************");
                 msg = ((TaskMessage) event).message();
                 TaskMessage taskMessage = (TaskMessage) event;
                 // LOG.info("Task message stream: " + taskMessage.stream() + " component: " + taskMessage.componentId());
