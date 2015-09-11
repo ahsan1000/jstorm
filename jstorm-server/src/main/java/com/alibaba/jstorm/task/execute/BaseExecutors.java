@@ -270,46 +270,46 @@ public class BaseExecutors extends RunnableCallback {
                 if (tuple != null) {
                     String streamId = tuple.getSourceStreamId();
                     String sourceCompoent = tuple.getSourceComponent();
-                    int sourceTask = tuple.getSourceTask();
+//                    int sourceTask = tuple.getSourceTask();
                     GlobalStreamId globalStreamId = new GlobalStreamId(sourceCompoent, streamId);
-                    LOG.info("Received message with stream ID: {} sourceTask {}", globalStreamId, sourceTask);
+//                    LOG.info("Received message with stream ID: {} sourceTask {}", globalStreamId, sourceTask);
                     // lets determine weather we need to send this message to other tasks as well acting as an intermediary
                     Map<GlobalStreamId, Set<Integer>> downsTasks = downStreamTasks.allDownStreamTasks(taskId);
                     if (downsTasks != null && downsTasks.containsKey(globalStreamId) && !downsTasks.get(globalStreamId).isEmpty()) {
                         // for now lets use the deserialized task and send it back... ideally we should send the byte message
                         Set<Integer> tasks = downsTasks.get(globalStreamId);
-                        StringBuilder innerTaskTextMsg = new StringBuilder();
-                        StringBuilder outerTaskTextMsg = new StringBuilder();
+//                        StringBuilder innerTaskTextMsg = new StringBuilder();
+//                        StringBuilder outerTaskTextMsg = new StringBuilder();
                         for (Integer task : tasks) {
                             if (task != taskId) {
                                 // these tasks can be in the same worker or in a different worker
                                 DisruptorQueue exeQueueNext = innerTaskTransfer.get(task);
                                 if (exeQueueNext != null) {
-                                    innerTaskTextMsg.append(task).append(" ");
+//                                    innerTaskTextMsg.append(task).append(" ");
                                     exeQueueNext.publish(tuple);
                                 } else {
-                                    outerTaskTextMsg.append(task).append(" ");
+//                                    outerTaskTextMsg.append(task).append(" ");
                                     taskTransfer.transfer((byte[]) event, task);
                                 }
                             } else {
-                                innerTaskTextMsg.append(task).append(" ");
+//                                innerTaskTextMsg.append(task).append(" ");
                                 exeQueue.publish(tuple);
                             }
                         }
 
-                        if (LOG.isInfoEnabled()) {
-                            StringBuilder sb = new StringBuilder("RECEIVE: Sending downstream message from task ").append(userTopologyCtx.getThisTaskId()).append(" [");
-                            sb.append("inner tasks: ").append(innerTaskTextMsg).append(" outer tasks: ").append(outerTaskTextMsg);
-                            sb.append("]");
-                            LOG.info(sb.toString());
-                        }
+//                        if (LOG.isInfoEnabled()) {
+//                            StringBuilder sb = new StringBuilder("RECEIVE: Sending downstream message from task ").append(userTopologyCtx.getThisTaskId()).append(" [");
+//                            sb.append("inner tasks: ").append(innerTaskTextMsg).append(" outer tasks: ").append(outerTaskTextMsg);
+//                            sb.append("]");
+//                            LOG.info(sb.toString());
+//                        }
                     } else {
-                        LOG.info("No Downstream task for message with stream ID: " + globalStreamId);
+//                        LOG.info("No Downstream task for message with stream ID: " + globalStreamId);
                         exeQueue.publish(tuple);
                     }
                 }
             } finally {
-                LOG.info("TRANSFER TIME *****: " + (System.currentTimeMillis() - time));
+//                LOG.info("TRANSFER TIME *****: " + (System.currentTimeMillis() - time));
             }
 		}
 

@@ -64,8 +64,9 @@ public class DownstreamTasks {
 
     public int getMapping(GlobalStreamId streamId, int taskId, int targetId) {
         Key key = new Key(streamId, taskId, targetId);
-        if (mapCache.containsKey(key)) {
-            return mapCache.get(key);
+        Integer mapping = mapCache.get(key);
+        if (mapping != null) {
+            return mapping;
         } else {
             if (nonExpandingTrees.containsKey(streamId)) {
                 List<CommunicationTree> trees = nonExpandingTrees.get(streamId);
@@ -86,8 +87,9 @@ public class DownstreamTasks {
 
     public boolean isSkip(GlobalStreamId streamId, int taskId, int targetId) {
         Key key = new Key(streamId, taskId, targetId);
-        if (skipCache.containsKey(key)) {
-            return  skipCache.get(key);
+        Boolean aBoolean = skipCache.get(key);
+        if (aBoolean != null) {
+            return aBoolean;
         } else {
             if (expandingTrees.containsKey(streamId)) {
                 List<CommunicationTree> trees = expandingTrees.get(streamId);

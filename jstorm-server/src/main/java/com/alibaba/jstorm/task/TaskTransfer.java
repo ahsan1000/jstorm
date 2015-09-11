@@ -98,52 +98,52 @@ public class TaskTransfer {
 
             // first check weather we need to skip
             if (downStreamTasks.isSkip(globalStreamId, sourceTaskId, targetTaskId)) {
-                LOG.info("Skipping transfer of tuple {} --> {}", sourceTaskId, targetTaskId);
+                // LOG.info("Skipping transfer of tuple {} --> {}", sourceTaskId, targetTaskId);
                 return;
             }
 
             // we will get the target is no mapping
             int mapping = downStreamTasks.getMapping(globalStreamId, sourceTaskId, targetTaskId);
-            LOG.info("Got a mapping of task transfer {} --> {}", targetTaskId, mapping);
+            // LOG.info("Got a mapping of task transfer {} --> {}", targetTaskId, mapping);
             DisruptorQueue exeQueue = innerTaskTransfer.get(mapping);
             if (exeQueue != null) {
-                LOG.info("Transferring tuple via memory {} --> {}", sourceTaskId, targetTaskId);
+                // LOG.info("Transferring tuple via memory {} --> {}", sourceTaskId, targetTaskId);
                 // in this case we are not going to hit TaskReceiver, so we need to do what we did there
                 // lets determine weather we need to send this message to other tasks as well acting as an intermediary
                 Map<GlobalStreamId, Set<Integer>> downsTasks = downStreamTasks.allDownStreamTasks(mapping);
                 if (downsTasks != null && downsTasks.containsKey(globalStreamId) && !downsTasks.get(globalStreamId).isEmpty()) {
                     Set<Integer> tasks = downsTasks.get(globalStreamId);
-                    StringBuilder innerTaskTextMsg = new StringBuilder();
-                    StringBuilder outerTaskTextMsg = new StringBuilder();
+//                    StringBuilder innerTaskTextMsg = new StringBuilder();
+//                    StringBuilder outerTaskTextMsg = new StringBuilder();
                     byte[] tupleMessage = null;
                     for (Integer task : tasks) {
                         if (task != mapping) {
                             // these tasks can be in the same worker or in a different worker
                             DisruptorQueue exeQueueNext = innerTaskTransfer.get(task);
                             if (exeQueueNext != null) {
-                                innerTaskTextMsg.append(task).append(" ");
+//                                innerTaskTextMsg.append(task).append(" ");
                                 exeQueueNext.publish(tuple);
                             } else {
-                                outerTaskTextMsg.append(task).append(" ");
+//                                outerTaskTextMsg.append(task).append(" ");
                                 serializeQueue.publish(tuple);
                             }
                         } else {
-                            innerTaskTextMsg.append(task).append(" ");
+//                            innerTaskTextMsg.append(task).append(" ");
                             exeQueue.publish(tuple);
                         }
                     }
 
-                    LOG.info("TRANSFER: Sending downstream message from task " + mapping + " [" + "inner tasks: " + innerTaskTextMsg + " outer tasks: " + outerTaskTextMsg + "]");
+                    // LOG.info("TRANSFER: Sending downstream message from task " + mapping + " [" + "inner tasks: " + innerTaskTextMsg + " outer tasks: " + outerTaskTextMsg + "]");
                 } else {
-                    LOG.info("No Downstream task for message with stream ID: " + globalStreamId);
+                    // LOG.info("No Downstream task for message with stream ID: " + globalStreamId);
                     exeQueue.publish(tuple);
                 }
             } else {
-                LOG.info("Transferring tuple via network {} --> {}", sourceTaskId, targetTaskId);
+                // LOG.info("Transferring tuple via network {} --> {}", sourceTaskId, targetTaskId);
                 serializeQueue.publish(tuple);
             }
         } finally {
-            LOG.info("TRANSFER TIME *****: " + (System.currentTimeMillis() - time));
+           // LOG.info("TRANSFER TIME *****: " + (System.currentTimeMillis() - time));
         }
 	}
 
