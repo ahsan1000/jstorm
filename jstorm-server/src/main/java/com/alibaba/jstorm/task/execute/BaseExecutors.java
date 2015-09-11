@@ -1,9 +1,11 @@
 package com.alibaba.jstorm.task.execute;
 
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
 import backtype.storm.generated.GlobalStreamId;
+import backtype.storm.messaging.TaskMessage;
 import com.alibaba.jstorm.task.DownstreamTasks;
 
 import backtype.storm.Config;
@@ -263,16 +265,17 @@ public class BaseExecutors extends RunnableCallback {
 		@Override
 		public void onEvent(Object event, long sequence, boolean endOfBatch)
 				throws Exception {
-			Tuple tuple = deserialize((byte[]) event);
+            byte msg[] = null;
+            if (event instanceof byte[]) {
+                msg = (byte[]) event;
+                Tuple tuple = deserialize(msg);
 
-            long time = System.currentTimeMillis();
-            try {
                 if (tuple != null) {
                     String streamId = tuple.getSourceStreamId();
                     String sourceCompoent = tuple.getSourceComponent();
 //                    int sourceTask = tuple.getSourceTask();
                     GlobalStreamId globalStreamId = new GlobalStreamId(sourceCompoent, streamId);
-//                    LOG.info("Received message with stream ID: {} sourceTask {}", globalStreamId, sourceTask);
+                    // LOG.info("Received message with stream ID: {} sourceTask", globalStreamId);
                     // lets determine weather we need to send this message to other tasks as well acting as an intermediary
                     Map<GlobalStreamId, Set<Integer>> downsTasks = downStreamTasks.allDownStreamTasks(taskId);
                     if (downsTasks != null && downsTasks.containsKey(globalStreamId) && !downsTasks.get(globalStreamId).isEmpty()) {
@@ -289,7 +292,7 @@ public class BaseExecutors extends RunnableCallback {
                                     exeQueueNext.publish(tuple);
                                 } else {
 //                                    outerTaskTextMsg.append(task).append(" ");
-                                    taskTransfer.transfer((byte[]) event, task);
+                                    taskTransfer.transfer(msg, task, streamId, sourceCompoent);
                                 }
                             } else {
 //                                innerTaskTextMsg.append(task).append(" ");
@@ -308,8 +311,47 @@ public class BaseExecutors extends RunnableCallback {
                         exeQueue.publish(tuple);
                     }
                 }
-            } finally {
-//                LOG.info("TRANSFER TIME *****: " + (System.currentTimeMillis() - time));
+            } else if (event instanceof TaskMessage) {
+                msg = ((TaskMessage) event).message();
+                TaskMessage taskMessage = (TaskMessage) event;
+                // LOG.info("Task message stream: " + taskMessage.stream() + " component: " + taskMessage.componentId());
+                Set<Integer> transferTasks = new HashSet<Integer>();
+                String streamId = taskMessage.stream();
+                String sourceCompoent = taskMessage.componentId();
+                GlobalStreamId globalStreamId = new GlobalStreamId(sourceCompoent, streamId);
+//                LOG.info("Received message with stream ID: {} sourceTask", globalStreamId);
+                // lets determine weather we need to send this message to other tasks as well acting as an intermediary
+                Map<GlobalStreamId, Set<Integer>> downsTasks = downStreamTasks.allDownStreamTasks(taskId);
+                if (downsTasks != null && downsTasks.containsKey(globalStreamId) && !downsTasks.get(globalStreamId).isEmpty()) {
+                    // for now lets use the deserialized task and send it back... ideally we should send the byte message
+                    Set<Integer> tasks = downsTasks.get(globalStreamId);
+                    for (Integer task : tasks) {
+                        if (task != taskId) {
+                            // these tasks can be in the same worker or in a different worker
+                            DisruptorQueue exeQueueNext = innerTaskTransfer.get(task);
+                            if (exeQueueNext != null) {
+                                transferTasks.add(task);
+                            } else {
+                                taskTransfer.transfer(msg, task, streamId, sourceCompoent);
+                            }
+                        } else {
+                            transferTasks.add(task);
+                        }
+                    }
+                } else {
+                    transferTasks.add(taskId);
+                }
+                Tuple tuple = deserialize(msg);
+                if (tuple != null) {
+                    for (Integer t : transferTasks) {
+                        if (t == taskId) {
+                            exeQueue.publish(tuple);
+                        } else {
+                            DisruptorQueue exeQueueNext = innerTaskTransfer.get(t);
+                            exeQueueNext.publish(tuple);
+                        }
+                    }
+                }
             }
 		}
 

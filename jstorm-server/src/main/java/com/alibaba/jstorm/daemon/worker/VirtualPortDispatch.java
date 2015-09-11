@@ -77,7 +77,7 @@ public class VirtualPortDispatch extends DisruptorRunable {
 			return;
 		}
 
-		queue.publish(message.message());
+		queue.publish(message);
 
 	}
 

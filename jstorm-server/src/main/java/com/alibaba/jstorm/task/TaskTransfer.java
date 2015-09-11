@@ -83,8 +83,8 @@ public class TaskTransfer {
         this.downStreamTasks = downStreamTasks;
     }
 
-    public void transfer(byte []tuple, int task) {
-        TaskMessage taskMessage = new TaskMessage(task, tuple);
+    public void transfer(byte []tuple, int task, String stream, String component) {
+        TaskMessage taskMessage = new TaskMessage(task, tuple, component, stream);
         transferQueue.publish(taskMessage);
     }
 
@@ -191,7 +191,7 @@ public class TaskTransfer {
 				TupleExt tuple = (TupleExt) event;
 				int taskid = tuple.getTargetTaskId();
 				byte[] tupleMessage = serializer.serialize(tuple);
-				TaskMessage taskMessage = new TaskMessage(taskid, tupleMessage);
+				TaskMessage taskMessage = new TaskMessage(taskid, tupleMessage, tuple.getSourceComponent(), tuple.getSourceStreamId());
 				transferQueue.publish(taskMessage);
 			}finally {
 				timer.stop();

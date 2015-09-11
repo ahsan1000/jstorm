@@ -50,7 +50,7 @@ public class MessageDecoder extends FrameDecoder {
 		long available = buf.readableBytes();
 		// Length of control message is 10. 
 		// Minimum length of a task message is 6(short taskId, int length).
-		if (available < 6) {
+		if (available < 10) {
 			// need more data
 			return null;
 		}
@@ -102,7 +102,7 @@ public class MessageDecoder extends FrameDecoder {
 				short task = code;
 
 				// Make sure that we have received at least an integer (length)
-				if (available < 4) {
+				if (available < 8) {
 					// need more data
 					buf.resetReaderIndex();
 
@@ -116,14 +116,26 @@ public class MessageDecoder extends FrameDecoder {
 				return new TaskMessage(task, null);
 			}
 
+            int headerLength = buf.readInt();
+
 			// Make sure if there's enough bytes in the buffer.
-			available -= 4;
-			if (available < length) {
+			available -= 8;
+			if (available < length + headerLength) {
 				// The whole bytes were not received yet - return null.
 				buf.resetReaderIndex();
 
 				return null;
 			}
+
+            String component = null;
+            String stream = null;
+            if (headerLength > 0) {
+                ChannelBuffer header = buf.readBytes(headerLength);
+                String headerValue = new String(header.array());
+                String splits[] = headerValue.split(" ");
+                component = splits[1];
+                stream = splits[0];
+            }
 
 			// There's enough bytes in the buffer. Read it.
 			ChannelBuffer payload = buf.readBytes(length);
@@ -136,7 +148,7 @@ public class MessageDecoder extends FrameDecoder {
 			// LOG.info("Receive task:{}, length: {}, data:{}",
 			// task, length, JStormUtils.toPrintableString(rawBytes));
 
-			TaskMessage ret = new TaskMessage(task, rawBytes);
+			TaskMessage ret = new TaskMessage(task, rawBytes, component, stream);
 
 			return ret;
 		} finally {
