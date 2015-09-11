@@ -273,6 +273,7 @@ public class BaseExecutors extends RunnableCallback {
                 if (tuple != null) {
                     String streamId = tuple.getSourceStreamId();
                     String sourceCompoent = tuple.getSourceComponent();
+                    LOG.error("NEW method*****************************************");
 //                    int sourceTask = tuple.getSourceTask();
                     GlobalStreamId globalStreamId = new GlobalStreamId(sourceCompoent, streamId);
                     // LOG.info("Received message with stream ID: {} sourceTask", globalStreamId);
