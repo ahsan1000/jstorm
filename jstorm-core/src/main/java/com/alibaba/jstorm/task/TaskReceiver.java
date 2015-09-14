@@ -17,10 +17,12 @@
  */
 package com.alibaba.jstorm.task;
 
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
 import backtype.storm.generated.GlobalStreamId;
+import backtype.storm.messaging.TaskMessage;
 import backtype.storm.tuple.BatchTuple;
 import com.alibaba.jstorm.daemon.worker.timer.TimerTrigger;
 import org.slf4j.Logger;
@@ -193,19 +195,65 @@ public class TaskReceiver {
         @Override
         public void onEvent(Object event, long sequence, boolean endOfBatch)
                 throws Exception {
-            Object tuple = deserialize((byte[]) event);
-            if (tuple instanceof Tuple) {
-                processTupleEvent((Tuple) tuple, event);
-            } else if (tuple instanceof BatchTuple) {
-                for (Tuple t : ((BatchTuple) tuple).getTuples()) {
-                    processTupleEvent(t, event);
-                }
-            } else if (tuple instanceof TimerTrigger.TimerEvent) {
-                exeQueue.publish(event);
+            if (event instanceof TaskMessage) {
+                processTaskMessage((TaskMessage) event);
             } else {
-                LOG.warn("Received unknown message");
+                Object tuple = deserialize((byte[]) event);
+                if (tuple instanceof Tuple) {
+                    processTupleEvent((Tuple) tuple, event);
+                } else if (tuple instanceof BatchTuple) {
+                    for (Tuple t : ((BatchTuple) tuple).getTuples()) {
+                        processTupleEvent(t, event);
+                    }
+                } else if (tuple instanceof TimerTrigger.TimerEvent) {
+                    exeQueue.publish(event);
+                } else {
+                    LOG.warn("Received unknown message");
+                }
             }
+        }
 
+        public void processTaskMessage(TaskMessage event)
+                throws Exception {
+            byte[] msg = event.message();
+            // LOG.info("Task message stream: " + taskMessage.stream() + " component: " + taskMessage.componentId());
+            Set<Integer> transferTasks = new HashSet<Integer>();
+            String streamId = event.stream();
+            String sourceCompoent = event.componentId();
+            GlobalStreamId globalStreamId = new GlobalStreamId(sourceCompoent, streamId);
+//                LOG.info("Received message with stream ID: {} sourceTask", globalStreamId);
+            // lets determine weather we need to send this message to other tasks as well acting as an intermediary
+            Map<GlobalStreamId, Set<Integer>> downsTasks = downStreamTasks.allDownStreamTasks(taskId);
+            if (downsTasks != null && downsTasks.containsKey(globalStreamId) && !downsTasks.get(globalStreamId).isEmpty()) {
+                // for now lets use the deserialized task and send it back... ideally we should send the byte message
+                Set<Integer> tasks = downsTasks.get(globalStreamId);
+                for (Integer task : tasks) {
+                    if (task != taskId) {
+                        // these tasks can be in the same worker or in a different worker
+                        DisruptorQueue exeQueueNext = innerTaskTransfer.get(task);
+                        if (exeQueueNext != null) {
+                            transferTasks.add(task);
+                        } else {
+                            taskTransfer.transfer(msg, task, streamId, sourceCompoent);
+                        }
+                    } else {
+                        transferTasks.add(task);
+                    }
+                }
+            } else {
+                transferTasks.add(taskId);
+            }
+            Object tuple = deserialize(msg);
+            if (tuple != null) {
+                for (Integer t : transferTasks) {
+                    if (t == taskId) {
+                        exeQueue.publish(tuple);
+                    } else {
+                        DisruptorQueue exeQueueNext = innerTaskTransfer.get(t);
+                        exeQueueNext.publish(tuple);
+                    }
+                }
+            }
         }
 
         private void processTupleEvent(Tuple tuple, Object event) {

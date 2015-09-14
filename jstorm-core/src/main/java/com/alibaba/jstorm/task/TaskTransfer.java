@@ -198,6 +198,18 @@ public class TaskTransfer {
         }
     }
 
+    public void transfer(byte []tuple, int task, String componentId, String streamId) {
+        TaskMessage taskMessage = new TaskMessage(task, tuple, componentId, streamId);
+        IConnection conn = getConnection(task);
+        if (conn != null) {
+            conn.send(taskMessage);
+        } else {
+            String s = "No connection to task: " + task;
+            LOG.error(s);
+            throw new RuntimeException(s);
+        }
+    }
+
     public void transfer(byte []tuple, Tuple tupleExt, int task) {
         DisruptorQueue exeQueue = innerTaskTransfer.get(task);
         if (exeQueue == null) {
@@ -266,7 +278,8 @@ public class TaskTransfer {
                 TupleExt tuple = (TupleExt) event;
                 int taskid = tuple.getTargetTaskId();
                 byte[] tupleMessage = serializer.serialize(tuple);
-                TaskMessage taskMessage = new TaskMessage(taskid, tupleMessage);
+                TaskMessage taskMessage = new TaskMessage(taskid, tupleMessage,
+                        tuple.getSourceComponent(), tuple.getSourceStreamId());
                 IConnection conn = getConnection(taskid);
                 if (conn != null) {
                     conn.send(taskMessage);
