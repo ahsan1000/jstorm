@@ -106,7 +106,6 @@ public class CommunicationPlanner {
                     Set<Integer> rootTasks = new HashSet<Integer>(ts);
                     // go through the component tasks list to figure out the correct locations
                     mappings = exctractWorkerMappings(allTasks, taskNodePort);
-                    LOG.info("ALL Collective tree");
                     CommunicationTree allTree = new CommunicationTree(conf, rootTasks, mappings, true);
                     // query the tree to get the broad cast tasks
                     Set<Integer> allChildTasks = allTree.getChildTasks(taskId);
@@ -148,7 +147,6 @@ public class CommunicationPlanner {
                 List<Integer> ts = context.getComponentTasks(componentId);
                 allTasks.addAll(ts);
                 mappings = exctractWorkerMappings(allTasks, taskNodePort);
-                LOG.info("ALL Collective tree");
                 CommunicationTree tree = new CommunicationTree(conf, sourceTasks, mappings, true);
                 // query the tree to get the broadcast tasks
 //                Set<Integer> childTasks = tree.getChildTasks(taskId);

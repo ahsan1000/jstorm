@@ -133,68 +133,51 @@ public class TaskTransfer {
     }
 
     public void transfer(TupleExt tuple) {
-        long time = System.currentTimeMillis();
-        try {
-            int targetTaskId = tuple.getTargetTaskId();
-            // this is equal to taskId
-            int sourceTaskId = tuple.getSourceTask();
-            GlobalStreamId globalStreamId = new GlobalStreamId(tuple.getSourceComponent(), tuple.getSourceStreamId());
+        int targetTaskId = tuple.getTargetTaskId();
+        // this is equal to taskId
+        int sourceTaskId = tuple.getSourceTask();
+        GlobalStreamId globalStreamId = new GlobalStreamId(tuple.getSourceComponent(), tuple.getSourceStreamId());
 
-            // first check weather we need to skip
-            if (downStreamTasks.isSkip(globalStreamId, sourceTaskId, targetTaskId)) {
-//                LOG.info("Skipping transfer of tuple {} --> {}", sourceTaskId, targetTaskId);
-                return;
-            }
+        // first check weather we need to skip
+        if (downStreamTasks.isSkip(globalStreamId, sourceTaskId, targetTaskId)) {
+            return;
+        }
 
-            // we will get the target is no mapping
-            int mapping = downStreamTasks.getMapping(globalStreamId, sourceTaskId, targetTaskId);
-//            LOG.info("Got a mapping of task transfer {} --> {}", targetTaskId, mapping);
-            DisruptorQueue exeQueue = innerTaskTransfer.get(mapping);
-            if (exeQueue != null) {
-//                LOG.info("Transferring tuple via memory {} --> {}", sourceTaskId, targetTaskId);
-                // in this case we are not going to hit TaskReceiver, so we need to do what we did there
-                // lets determine weather we need to send this message to other tasks as well acting as an intermediary
-                Map<GlobalStreamId, Set<Integer>> downsTasks = downStreamTasks.allDownStreamTasks(mapping);
-                if (downsTasks != null && downsTasks.containsKey(globalStreamId) && !downsTasks.get(globalStreamId).isEmpty()) {
-                    Set<Integer> tasks = downsTasks.get(globalStreamId);
-//                    StringBuilder innerTaskTextMsg = new StringBuilder();
-//                    StringBuilder outerTaskTextMsg = new StringBuilder();
-                    byte[] tupleMessage = null;
-                    for (Integer task : tasks) {
-                        if (task != mapping) {
-                            // these tasks can be in the same worker or in a different worker
-                            DisruptorQueue exeQueueNext = innerTaskTransfer.get(task);
-                            if (exeQueueNext != null) {
-//                                innerTaskTextMsg.append(task).append(" ");
-                                exeQueueNext.publish(tuple);
-                            } else {
-//                                outerTaskTextMsg.append(task).append(" ");
-                                if (tupleMessage == null) {
-                                    tupleMessage = serializer.serialize(tuple);
-                                }
-                                TaskMessage taskMessage = new TaskMessage(task, tupleMessage);
-                                IConnection conn = getConnection(task);
-                                if (conn != null) {
-                                    conn.send(taskMessage);
-                                }
-                            }
+        // we will get the target is no mapping
+        int mapping = downStreamTasks.getMapping(globalStreamId, sourceTaskId, targetTaskId);
+        DisruptorQueue exeQueue = innerTaskTransfer.get(mapping);
+        if (exeQueue != null) {
+            // in this case we are not going to hit TaskReceiver, so we need to do what we did there
+            // lets determine weather we need to send this message to other tasks as well acting as an intermediary
+            Map<GlobalStreamId, Set<Integer>> downsTasks = downStreamTasks.allDownStreamTasks(mapping);
+            if (downsTasks != null && downsTasks.containsKey(globalStreamId) && !downsTasks.get(globalStreamId).isEmpty()) {
+                Set<Integer> tasks = downsTasks.get(globalStreamId);
+                byte[] tupleMessage = null;
+                for (Integer task : tasks) {
+                    if (task != mapping) {
+                        // these tasks can be in the same worker or in a different worker
+                        DisruptorQueue exeQueueNext = innerTaskTransfer.get(task);
+                        if (exeQueueNext != null) {
+                            exeQueueNext.publish(tuple);
                         } else {
-//                            innerTaskTextMsg.append(task).append(" ");
-                            exeQueue.publish(tuple);
+                            if (tupleMessage == null) {
+                                tupleMessage = serializer.serialize(tuple);
+                            }
+                            TaskMessage taskMessage = new TaskMessage(task, tupleMessage);
+                            IConnection conn = getConnection(task);
+                            if (conn != null) {
+                                conn.send(taskMessage);
+                            }
                         }
+                    } else {
+                        exeQueue.publish(tuple);
                     }
-
-//                    LOG.info("TRANSFER: Sending downstream message from task " + mapping + " [" + "inner tasks: " + innerTaskTextMsg + " outer tasks: " + outerTaskTextMsg + "]");
-                } else {
-//                    LOG.info("No Downstream task for message with stream ID: " + globalStreamId);
-                    exeQueue.publish(tuple);
                 }
             } else {
-//                LOG.info("Transferring tuple via network {} --> {}", sourceTaskId, targetTaskId);
-                serializeQueue.publish(tuple);
+                exeQueue.publish(tuple);
             }
-        } finally {
-//            LOG.info("TRANSFER TIME *****: " + (System.currentTimeMillis() - time));
+        } else {
+            serializeQueue.publish(tuple);
         }
     }
 
