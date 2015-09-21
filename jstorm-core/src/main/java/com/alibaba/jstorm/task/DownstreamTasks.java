@@ -10,6 +10,8 @@ public class DownstreamTasks {
 
     private Map<GlobalStreamId, List<CommunicationTree>> nonExpandingTrees = new HashMap<GlobalStreamId, List<CommunicationTree>>();
 
+    private Map<GlobalStreamId, List<CommunicationPipeLine>> pipeLines = new HashMap<GlobalStreamId, List<CommunicationPipeLine>>();
+
     private Map<Integer, Map<GlobalStreamId, Set<Integer>>> downstreamTaskCache = new ConcurrentHashMap<Integer, Map<GlobalStreamId, Set<Integer>>>();
 
     private Map<Key, Integer> mapCache = new ConcurrentHashMap<Key, Integer>();
@@ -100,6 +102,17 @@ public class DownstreamTasks {
                 }
                 skipCache.put(key, true);
                 return true;
+            } else if (pipeLines.containsKey(streamId)) {
+                List<CommunicationPipeLine> pipes = pipeLines.get(streamId);
+                for (CommunicationPipeLine pipe : pipes) {
+                    TreeSet<Integer> childTasks = pipe.getChildTasks(taskId);
+                    if (!childTasks.isEmpty() && childTasks.contains(targetId)) {
+                        skipCache.put(key, false);
+                        return false;
+                    }
+                }
+                skipCache.put(key, true);
+                return true;
             }
             skipCache.put(key, false);
             return false;
@@ -130,6 +143,15 @@ public class DownstreamTasks {
         }
     }
 
+    public void addPipeLine(GlobalStreamId id, CommunicationPipeLine pipeLine) {
+        List<CommunicationPipeLine> pipes = pipeLines.get(id);
+        if (pipes == null) {
+            pipes = new ArrayList<CommunicationPipeLine>();
+            pipeLines.put(id, pipes);
+        }
+        pipes.add(pipeLine);
+    }
+
     /**
      * Get all the downstream tasks of a given task
      * @param taskId task id
@@ -149,6 +171,7 @@ public class DownstreamTasks {
                 }
                 allTasks.put(id, treeSet);
             }
+
             for (Map.Entry<GlobalStreamId, List<CommunicationTree>> e : nonExpandingTrees.entrySet()) {
                 GlobalStreamId id = e.getKey();
                 List<CommunicationTree> treeList = e.getValue();
@@ -161,6 +184,20 @@ public class DownstreamTasks {
                     treeSet.addAll(t.getChildTasks(taskId));
                 }
             }
+
+            for (Map.Entry<GlobalStreamId, List<CommunicationPipeLine>> e : pipeLines.entrySet()) {
+                GlobalStreamId id = e.getKey();
+                List<CommunicationPipeLine> treeList = e.getValue();
+                Set<Integer> treeSet = allTasks.get(id);
+                if (treeSet == null) {
+                    treeSet = new TreeSet<Integer>();
+                    allTasks.put(id, treeSet);
+                }
+                for (CommunicationPipeLine t : treeList) {
+                    treeSet.addAll(t.getChildTasks(taskId));
+                }
+            }
+
             downstreamTaskCache.put(taskId, allTasks);
             return allTasks;
         }

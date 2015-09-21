@@ -140,11 +140,15 @@ public class TaskTransfer {
 
         // first check weather we need to skip
         if (downStreamTasks.isSkip(globalStreamId, sourceTaskId, targetTaskId)) {
+            LOG.info("Skipping transfer of tuple {} --> {}", sourceTaskId, targetTaskId);
             return;
         }
 
         // we will get the target is no mapping
         int mapping = downStreamTasks.getMapping(globalStreamId, sourceTaskId, targetTaskId);
+        LOG.info("Got a mapping of task transfer {} --> {}", targetTaskId, mapping);
+        StringBuilder innerTaskTextMsg = new StringBuilder();
+        StringBuilder outerTaskTextMsg = new StringBuilder();
         DisruptorQueue exeQueue = innerTaskTransfer.get(mapping);
         if (exeQueue != null) {
             // in this case we are not going to hit TaskReceiver, so we need to do what we did there
@@ -153,13 +157,16 @@ public class TaskTransfer {
             if (downsTasks != null && downsTasks.containsKey(globalStreamId) && !downsTasks.get(globalStreamId).isEmpty()) {
                 Set<Integer> tasks = downsTasks.get(globalStreamId);
                 byte[] tupleMessage = null;
+
                 for (Integer task : tasks) {
                     if (task != mapping) {
                         // these tasks can be in the same worker or in a different worker
                         DisruptorQueue exeQueueNext = innerTaskTransfer.get(task);
                         if (exeQueueNext != null) {
+                            innerTaskTextMsg.append(task).append(" ");
                             exeQueueNext.publish(tuple);
                         } else {
+                            outerTaskTextMsg.append(task).append(" ");
                             if (tupleMessage == null) {
                                 tupleMessage = serializer.serialize(tuple);
                             }
@@ -170,13 +177,17 @@ public class TaskTransfer {
                             }
                         }
                     } else {
+                        innerTaskTextMsg.append(task).append(" ");
                         exeQueue.publish(tuple);
                     }
                 }
+                LOG.info("TRANSFER: Sending downstream message from task " + mapping + " [" + "inner tasks: " + innerTaskTextMsg + " outer tasks: " + outerTaskTextMsg + "]");
             } else {
+                LOG.info("Executing task, No Downstream task for message with stream ID: " + globalStreamId);
                 exeQueue.publish(tuple);
             }
         } else {
+            LOG.info("Transferring tuple via network {} --> {}", sourceTaskId, targetTaskId);
             serializeQueue.publish(tuple);
         }
     }

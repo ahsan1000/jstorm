@@ -52,10 +52,6 @@ public class CommunicationTree {
     /** Root of this tree */
     private TreeNode root;
 
-    public CommunicationTree(Map conf, TreeMap<String, TreeMap<Integer, TreeSet<Integer>>> mappings, boolean expandingTree) {
-        this(conf, null, mappings, expandingTree);
-    }
-
     public boolean isExpandingTree() {
         return expandingTree;
     }
@@ -68,7 +64,9 @@ public class CommunicationTree {
      * Create a collective tree
      * @param conf topology configuration
      */
-    public CommunicationTree(Map conf, Set<Integer> rootTaskId, TreeMap<String, TreeMap<Integer, TreeSet<Integer>>> mappings, boolean expandingTree) {
+    public CommunicationTree(Map conf, Set<Integer> rootTaskId,
+                             TreeMap<String, TreeMap<Integer, TreeSet<Integer>>> mappings,
+                             boolean expandingTree, boolean useFlatTree) {
         StringBuilder sb = new StringBuilder("Root Tasks: ");
         for (Integer t : rootTaskId) {
             sb.append(t).append(" ");
@@ -77,7 +75,7 @@ public class CommunicationTree {
         String s = CommunicationPlanner.printMappings(mappings);
         sb.append("Mappings: ").append(s);
 
-        Boolean useFlatTree = (Boolean) conf.get(Config.COLLECTIVE_USE_FLAT_TREE);
+
 
         LOG.info("Collective tree: " + sb.toString());
         Object workerLevelBranching = conf.get(Config.COLLECTIVE_WORKER_BRANCHING_FACTOR);
@@ -93,7 +91,7 @@ public class CommunicationTree {
 
         Integer nodeLevelBranching = (Integer) conf.get(Config.COLLECTIVE_NODE_BRANCHING_FACTOR);
         // if we are going to use a flat tree no level branching factor should be the size of supervisors
-        if (useFlatTree != null && useFlatTree) {
+        if (useFlatTree) {
             this.nodeLevelBranchingFactor = mappings.size();
         } else {
             if (nodeLevelBranching != null) {

@@ -1418,6 +1418,11 @@ public class Config extends HashMap<String, Object> {
      */
     public static final String COLLECTIVE_USE_FLAT_TREE = "topology.collective.use.flaTree";
 
+    /**
+     * Weather we are going to use a pipeline
+     */
+    public static final String COLLECTIVE_USE_PIPE_LINE = "topology.collective.use.pipeline";
+
     public static void setClasspath(Map conf, String cp) {
         conf.put(Config.TOPOLOGY_CLASSPATH, cp);
     }
