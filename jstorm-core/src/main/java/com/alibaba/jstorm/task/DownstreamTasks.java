@@ -105,7 +105,7 @@ public class DownstreamTasks {
             } else if (pipeLines.containsKey(streamId)) {
                 List<CommunicationPipeLine> pipes = pipeLines.get(streamId);
                 for (CommunicationPipeLine pipe : pipes) {
-                    TreeSet<Integer> childTasks = pipe.getChildTasks(taskId);
+                    TreeSet<Integer> childTasks = pipe.getAllTasks(taskId);
                     if (!childTasks.isEmpty() && childTasks.contains(targetId)) {
                         skipCache.put(key, false);
                         return false;

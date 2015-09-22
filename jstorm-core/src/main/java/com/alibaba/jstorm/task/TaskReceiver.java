@@ -231,20 +231,25 @@ public class TaskReceiver {
             if (downsTasks != null && downsTasks.containsKey(globalStreamId) && !downsTasks.get(globalStreamId).isEmpty()) {
                 // for now lets use the deserialized task and send it back... ideally we should send the byte message
                 Set<Integer> tasks = downsTasks.get(globalStreamId);
+                LOG.info("RECEIVE tasks: {}", tasks);
                 for (Integer task : tasks) {
                     if (task != taskId) {
                         // these tasks can be in the same worker or in a different worker
                         DisruptorQueue exeQueueNext = innerTaskTransfer.get(task);
                         if (exeQueueNext != null) {
+                            innerTaskTextMsg.append(task).append(" ");
                             transferTasks.add(task);
                         } else {
+                            outerTaskTextMsg.append(task).append(" ");
                             taskTransfer.transfer(msg, task, streamId, sourceCompoent);
                         }
                     } else {
+                        innerTaskTextMsg.append(task).append(" ");
                         transferTasks.add(task);
                     }
                 }
             } else {
+                innerTaskTextMsg.append(taskId).append(" ");
                 transferTasks.add(taskId);
             }
             Object tuple = deserialize(msg);
@@ -257,6 +262,12 @@ public class TaskReceiver {
                         exeQueueNext.publish(tuple);
                     }
                 }
+            }
+            if (LOG.isInfoEnabled()) {
+                StringBuilder sb = new StringBuilder("TASK RECEIVE: Sending downstream message from task ").append(topologyContext.getThisTaskId()).append(" [");
+                sb.append("inner tasks: ").append(innerTaskTextMsg).append(" outer tasks: ").append(outerTaskTextMsg);
+                sb.append("]");
+                LOG.info(sb.toString());
             }
         }
 
@@ -272,6 +283,7 @@ public class TaskReceiver {
                 if (downsTasks != null && downsTasks.containsKey(globalStreamId) && !downsTasks.get(globalStreamId).isEmpty()) {
                     // for now lets use the deserialized task and send it back... ideally we should send the byte message
                     Set<Integer> tasks = downsTasks.get(globalStreamId);
+                    LOG.info("RECEIVE tasks tuple: {}", tasks);
                     StringBuilder innerTaskTextMsg = new StringBuilder();
                     StringBuilder outerTaskTextMsg = new StringBuilder();
                     for (Integer task : tasks) {

@@ -98,7 +98,7 @@ public class CommunicationPipeLine {
         return rootTaskIds;
     }
 
-    public TreeSet<Integer> getChildTasks(int taskId) {
+    public TreeSet<Integer> getAllTasks(int taskId) {
         TreeSet<Integer> returnTasks = new TreeSet<Integer>();
         PipeLineNode node = search(taskId);
         if (node != null) {
@@ -108,9 +108,36 @@ public class CommunicationPipeLine {
                     returnTasks.add(t);
                 }
             }
+            // add the source as well
+            returnTasks.add(node.sourceTask);
             // only valid targets are added, last node in pipe line
             if (node.targetTask >= 0) {
                 returnTasks.add(node.targetTask);
+            }
+        } else {
+            LOG.info("Failed to get node: " + taskId);
+        }
+        LOG.info("return tasks: {}", returnTasks);
+        return returnTasks;
+    }
+
+    public TreeSet<Integer> getChildTasks(int taskId) {
+        TreeSet<Integer> returnTasks = new TreeSet<Integer>();
+        PipeLineNode node = search(taskId);
+        if (node != null) {
+            LOG.info("Searched node with {}: " + node.serialize(), taskId);
+            if (taskId == node.sourceTask) {
+                for (int t : node.inMemoryTasks) {
+                    if (t != taskId) {
+                        returnTasks.add(t);
+                    }
+                }
+                // add the source as well
+                returnTasks.add(node.sourceTask);
+                // only valid targets are added, last node in pipe line
+                if (node.targetTask >= 0) {
+                    returnTasks.add(node.targetTask);
+                }
             }
         } else {
             LOG.info("Failed to get node: " + taskId);

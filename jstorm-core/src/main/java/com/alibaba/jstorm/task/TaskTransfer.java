@@ -156,6 +156,7 @@ public class TaskTransfer {
             Map<GlobalStreamId, Set<Integer>> downsTasks = downStreamTasks.allDownStreamTasks(mapping);
             if (downsTasks != null && downsTasks.containsKey(globalStreamId) && !downsTasks.get(globalStreamId).isEmpty()) {
                 Set<Integer> tasks = downsTasks.get(globalStreamId);
+                LOG.info("TRANSFER tasks: {}", tasks);
                 byte[] tupleMessage = null;
 
                 for (Integer task : tasks) {
