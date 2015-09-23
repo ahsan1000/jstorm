@@ -105,7 +105,11 @@ public class CommunicationTree {
         root = new TreeNode();
         root.taskIds.addAll(rootTaskId);
         buildTree(root, mappings);
-        LOG.info("Tree: {}", BTreePrinter.print(root));
+        // LOG.info("Tree: {}", BTreePrinter.print(root));
+    }
+
+    public String printTree() {
+        return BTreePrinter.print(root);
     }
 
     public TreeSet<Integer> taskIdsOfNode(int taskId) {

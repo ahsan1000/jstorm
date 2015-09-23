@@ -221,13 +221,14 @@ public class TaskReceiver {
             // LOG.info("Task message stream: " + taskMessage.stream() + " component: " + taskMessage.componentId());
             Set<Integer> transferTasks = new HashSet<Integer>();
             String streamId = event.stream();
-            String sourceCompoent = event.componentId();
-            GlobalStreamId globalStreamId = new GlobalStreamId(sourceCompoent, streamId);
-            LOG.info("Received message with stream ID: {} ", globalStreamId);
+            String sourceComponent = event.componentId();
+            GlobalStreamId globalStreamId = new GlobalStreamId(sourceComponent, streamId);
+            LOG.info("Task Received message with stream ID: {} ", globalStreamId);
             StringBuilder innerTaskTextMsg = new StringBuilder();
             StringBuilder outerTaskTextMsg = new StringBuilder();
             // lets determine weather we need to send this message to other tasks as well acting as an intermediary
             Map<GlobalStreamId, Set<Integer>> downsTasks = downStreamTasks.allDownStreamTasks(taskId);
+            LOG.info("Task RECEIVE taskId: {}, down tasks: {}", taskId, DownstreamTasks.printDownTasks(downsTasks));
             if (downsTasks != null && downsTasks.containsKey(globalStreamId) && !downsTasks.get(globalStreamId).isEmpty()) {
                 // for now lets use the deserialized task and send it back... ideally we should send the byte message
                 Set<Integer> tasks = downsTasks.get(globalStreamId);
@@ -241,7 +242,7 @@ public class TaskReceiver {
                             transferTasks.add(task);
                         } else {
                             outerTaskTextMsg.append(task).append(" ");
-                            taskTransfer.transfer(msg, task, streamId, sourceCompoent);
+                            taskTransfer.transfer(msg, task, sourceComponent, streamId);
                         }
                     } else {
                         innerTaskTextMsg.append(task).append(" ");
@@ -280,6 +281,7 @@ public class TaskReceiver {
                 LOG.info("Received message with stream ID: {} sourceTask {}", globalStreamId, sourceTask);
                 // lets determine weather we need to send this message to other tasks as well acting as an intermediary
                 Map<GlobalStreamId, Set<Integer>> downsTasks = downStreamTasks.allDownStreamTasks(taskId);
+                LOG.info("RECEIVE taskId: {}, down tasks: {}", taskId, DownstreamTasks.printDownTasks(downsTasks));
                 if (downsTasks != null && downsTasks.containsKey(globalStreamId) && !downsTasks.get(globalStreamId).isEmpty()) {
                     // for now lets use the deserialized task and send it back... ideally we should send the byte message
                     Set<Integer> tasks = downsTasks.get(globalStreamId);

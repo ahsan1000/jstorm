@@ -119,8 +119,11 @@ public class CommunicationPlanner {
                         } else {
                             allTree = new CommunicationTree(conf, rootTasks, mappings, true, false);
                         }
+
+                        GlobalStreamId streamId = new GlobalStreamId(componentId, stream);
+                        LOG.info("TaskId: {}, StreamId: {}, Tree: {}", taskId, streamId, allTree.printTree());
                         // query the tree to get the broad cast tasks
-                        downStreamTasks.addCollectiveTree(new GlobalStreamId(componentId, stream), allTree);
+                        downStreamTasks.addCollectiveTree(streamId, allTree);
                     }
                 } /*else if (Grouping._Fields.SHUFFLE.equals(Thrift.groupingType(g))) {
                     // lets process the shuffle operation
@@ -169,6 +172,7 @@ public class CommunicationPlanner {
                     } else {
                         tree = new CommunicationTree(conf, sourceTasks, mappings, true, false);
                     }
+                    LOG.info("TaskId: {}, StreamID: {}, Tree: {}", taskId, sourceGlobalStreamId, tree.printTree());
                     // query the tree to get the broadcast tasks
                     downStreamTasks.addCollectiveTree(sourceGlobalStreamId, tree);
                 }

@@ -202,4 +202,12 @@ public class DownstreamTasks {
             return allTasks;
         }
     }
+
+    public static String printDownTasks(Map<GlobalStreamId, Set<Integer>> downTasks) {
+        StringBuilder sb = new StringBuilder();
+        for (Map.Entry<GlobalStreamId, Set<Integer>> e : downTasks.entrySet()) {
+            sb.append("[").append(e.getKey()).append(": ").append(e.getValue()).append("] ");
+        }
+        return sb.toString();
+    }
 }
