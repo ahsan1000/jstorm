@@ -34,6 +34,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import com.alibaba.jstorm.message.internode.InterNodeClient;
+import com.alibaba.jstorm.message.internode.InterNodeServer;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -105,6 +107,9 @@ public class WorkerData {
 
     // connection to other workers <NodePort, ZMQConnection>
     private ConcurrentHashMap<WorkerSlot, IConnection> nodeportSocket;
+
+    // intra node connections using memory mapped files to workers in same node
+    private ConcurrentHashMap<Integer, IConnection> intraNodeConnections;
     // <taskId, NodePort>
     private ConcurrentHashMap<Integer, WorkerSlot> taskNodeport;
 
@@ -156,6 +161,9 @@ public class WorkerData {
     private volatile AssignmentType assignmentType;
     
     private IConnection recvConnection;
+
+    /** This is the intranode server */
+    private InterNodeServer interNodeServer;
 
     @SuppressWarnings({ "rawtypes", "unchecked" })
     public WorkerData(Map conf, IContext context, String topology_id,
@@ -261,6 +269,8 @@ public class WorkerData {
         this.sendingQueue.consumerStarted();
 
         this.nodeportSocket = new ConcurrentHashMap<WorkerSlot, IConnection>();
+        this.intraNodeConnections = new ConcurrentHashMap<Integer, IConnection>();
+
         this.taskNodeport = new ConcurrentHashMap<Integer, WorkerSlot>();
         this.workerToResource = new ConcurrentSkipListSet<ResourceWorkerSlot>();
         this.innerTaskTransfer =
@@ -389,6 +399,10 @@ public class WorkerData {
 
     public ConcurrentHashMap<WorkerSlot, IConnection> getNodeportSocket() {
         return nodeportSocket;
+    }
+
+    public ConcurrentHashMap<Integer, IConnection> getIntraNodeConnections() {
+        return intraNodeConnections;
     }
 
     public ConcurrentHashMap<Integer, WorkerSlot> getTaskNodeport() {

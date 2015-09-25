@@ -26,6 +26,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import com.alibaba.jstorm.message.internode.InterNodeClient;
+import com.alibaba.jstorm.message.internode.InterNodeServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -84,6 +86,12 @@ public class RefreshConnections extends RunnableCallback {
 
     private int taskTimeoutSecs;
 
+    /**
+     * Intra node communication using memory mapped files. We create a connection for
+     * every worker in the same node.
+     */
+    private ConcurrentHashMap<Integer, IConnection> intraNodeConnections;
+
     // private ReentrantReadWriteLock endpoint_socket_lock;
 
     @SuppressWarnings("rawtypes")
@@ -99,6 +107,7 @@ public class RefreshConnections extends RunnableCallback {
         this.nodeportSocket = workerData.getNodeportSocket();
         this.context = workerData.getContext();
         this.taskNodeport = workerData.getTaskNodeport();
+        this.intraNodeConnections = workerData.getIntraNodeConnections();
         this.supervisorId = workerData.getSupervisorId();
 
         // this.endpoint_socket_lock = endpoint_socket_lock;
@@ -218,6 +227,7 @@ public class RefreshConnections extends RunnableCallback {
 
                 // only reserve outboundTasks
                 Set<WorkerSlot> need_connections = new HashSet<WorkerSlot>();
+                Set<WorkerSlot> need_intra_connection = new HashSet<WorkerSlot>();
 
                 Set<Integer> localTasks = new HashSet<Integer>();
 
@@ -227,6 +237,9 @@ public class RefreshConnections extends RunnableCallback {
                                 && worker.getPort() == workerData.getPort()) {
                             localTasks.addAll(worker.getTasks());
                             need_connections.add(worker);
+                        }
+                        if (supervisorId.equals(worker.getNodeId())) {
+                            need_intra_connection.add(worker);
                         }
                         for (Integer id : worker.getTasks()) {
                             if (outboundTasks.contains(id)) {
@@ -258,6 +271,12 @@ public class RefreshConnections extends RunnableCallback {
                     if (!need_connections.contains(node_port)) {
                         remove_connections.add(node_port);
                     }
+                }
+
+                // TODO: Remvoe connectiuons
+                for (WorkerSlot intra_port : need_intra_connection) {
+                    // TODO: pass worker id
+                    intraNodeConnections.put(intra_port.getPort(), new InterNodeClient());
                 }
 
                 // create new connection

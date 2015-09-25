@@ -25,6 +25,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import backtype.storm.generated.GlobalStreamId;
 import backtype.storm.tuple.Tuple;
 import backtype.storm.tuple.TupleImplExt;
+import com.alibaba.jstorm.message.internode.InterNodeClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -80,6 +81,8 @@ public class TaskTransfer {
     protected int taskId;
     
     protected ConcurrentHashMap<WorkerSlot, IConnection> nodeportSocket;
+    protected ConcurrentHashMap<Integer, IConnection> intraNodeConnections;
+
     protected ConcurrentHashMap<Integer, WorkerSlot> taskNodeport;
 
     // broadcast tasks for each stream
@@ -98,6 +101,7 @@ public class TaskTransfer {
         this.taskId = thisTaskId;
         
         this.nodeportSocket = workerData.getNodeportSocket();
+        this.intraNodeConnections = workerData.getIntraNodeConnections();
         this.taskNodeport = workerData.getTaskNodeport();
 
         int queue_size =
@@ -290,15 +294,21 @@ public class TaskTransfer {
 
     protected IConnection getConnection(int taskId) {
         IConnection conn = null;
+        WorkerSlot thisNodePort = taskNodeport.get(this.taskId);
         WorkerSlot nodePort = taskNodeport.get(taskId);
         if (nodePort == null) {
             String errormsg = "can`t not found IConnection to " + taskId;
             LOG.warn("Intra transfer warn", new Exception(errormsg));
         } else {
-            conn = nodeportSocket.get(nodePort);
+            if (thisNodePort.getNodeId().equals(nodePort.getNodeId())) {
+                conn = intraNodeConnections.get(taskId);
+            }
             if (conn == null) {
-                String errormsg = "can`t not found nodePort " + nodePort;
-                LOG.warn("Intra transfer warn", new Exception(errormsg));
+                conn = nodeportSocket.get(nodePort);
+                if (conn == null) {
+                    String errormsg = "can`t not found nodePort " + nodePort;
+                    LOG.warn("Intra transfer warn", new Exception(errormsg));
+                }
             }
         }
         return conn;
