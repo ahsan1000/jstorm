@@ -4,6 +4,8 @@ import backtype.storm.messaging.IConnection;
 import backtype.storm.messaging.TaskMessage;
 import backtype.storm.utils.DisruptorQueue;
 import io.mappedbus.MappedBusWriter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.EOFException;
 import java.io.IOException;
@@ -13,6 +15,8 @@ import java.util.List;
 import java.util.UUID;
 
 public class IntraNodeClient implements IConnection {
+    private static Logger LOG = LoggerFactory.getLogger(IntraNodeServer.class);
+
     // 2 Longs for uuid, 1 int for total number of packets, and 1 int for packet number
     private static int metaDataExtent = 2*Long.BYTES + 2*Integer.BYTES;
     // 1 int for task#, 1 int for content.length, 1 int for componentID.length, 1 int for stream.length
@@ -197,7 +201,7 @@ public class IntraNodeClient implements IConnection {
             try {
                 write(taskMessage);
             } catch (EOFException e) {
-                e.printStackTrace();
+                throw new RuntimeException("Faile to send message", e);
             }
         }
     }
@@ -207,7 +211,7 @@ public class IntraNodeClient implements IConnection {
         try {
             write(message);
         } catch (EOFException e) {
-            e.printStackTrace();
+            throw new RuntimeException("Failed to send message", e);
         }
     }
 
