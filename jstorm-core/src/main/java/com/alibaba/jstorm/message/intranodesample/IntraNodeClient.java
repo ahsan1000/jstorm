@@ -1,15 +1,18 @@
 package com.alibaba.jstorm.message.intranodesample;
 
+import backtype.storm.messaging.IConnection;
 import backtype.storm.messaging.TaskMessage;
+import backtype.storm.utils.DisruptorQueue;
 import io.mappedbus.MappedBusWriter;
 
 import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Date;
+import java.util.List;
 import java.util.UUID;
 
-public class IntraNodeClient {
+public class IntraNodeClient implements IConnection {
     // 2 Longs for uuid, 1 int for total number of packets, and 1 int for packet number
     private static int metaDataExtent = 2*Long.BYTES + 2*Integer.BYTES;
     // 1 int for task#, 1 int for content.length, 1 int for componentID.length, 1 int for stream.length
@@ -35,9 +38,8 @@ public class IntraNodeClient {
         }
     }*/
 
-    public IntraNodeClient(int clientID, String fileName, long fileSize, int packetSize)
+    public IntraNodeClient(String fileName, long fileSize, int packetSize)
         throws IOException {
-        this.clientID = clientID;
         this.fileName = fileName;
         this.fileSize = fileSize;
         if (packetSize < metaDataExtent+constMsgExtent){
@@ -53,9 +55,7 @@ public class IntraNodeClient {
         writer.open();
     }
 
-
-
-    public void write(TaskMessage msg) throws EOFException {
+    private void write(TaskMessage msg) throws EOFException {
         UUID uuid = UUID.randomUUID();
         byte[] content = msg.message();
         // extent is metadata + msg
@@ -173,4 +173,55 @@ public class IntraNodeClient {
 
     }
 
+    @Override
+    public Object recv(Integer taskId, int flags) {
+        throw new UnsupportedOperationException(
+                "recvTask: Client connection should not receive any messages");
+    }
+
+    @Override
+    public void registerQueue(Integer taskId, DisruptorQueue recvQueu) {
+        throw new UnsupportedOperationException(
+                "recvTask: Client connection should not receive any messages");
+    }
+
+    @Override
+    public void enqueue(TaskMessage message) {
+        throw new UnsupportedOperationException(
+                "recvTask: Client connection should not receive any messages");
+    }
+
+    @Override
+    public void send(List<TaskMessage> messages) {
+        for (TaskMessage taskMessage : messages) {
+            try {
+                write(taskMessage);
+            } catch (EOFException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    @Override
+    public void send(TaskMessage message) {
+        try {
+            write(message);
+        } catch (EOFException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void close() {
+        try {
+            writer.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public boolean isClosed() {
+        return false;
+    }
 }

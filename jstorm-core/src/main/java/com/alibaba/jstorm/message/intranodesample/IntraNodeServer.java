@@ -1,13 +1,15 @@
 package com.alibaba.jstorm.message.intranodesample;
 
+import backtype.storm.messaging.IConnection;
 import backtype.storm.messaging.TaskMessage;
 import backtype.storm.metric.SystemBolt;
+import backtype.storm.utils.DisruptorQueue;
 import io.mappedbus.MappedBusReader;
 
 import java.nio.ByteBuffer;
 import java.util.*;
 
-public class IntraNodeServer {
+public class IntraNodeServer implements IConnection {
     // 2 Longs for uuid, 1 int for total number of packets, and 1 int for packet number
     private static int metaDataExtent = 2*Long.BYTES + 2*Integer.BYTES;
     HashMap<UUID, ArrayList<ByteBuffer>> msgs = new HashMap<>();
@@ -141,6 +143,41 @@ public class IntraNodeServer {
         TaskMessage msg = new TaskMessage(task, content, new String(compId), new String(stream));
         System.out.println(msg.task() + " -- " + Arrays.toString(msg.message()) + " -- " + msg.componentId() + " -- " + msg.stream());
 
+    }
+
+    @Override
+    public Object recv(Integer taskId, int flags) {
+        return null;
+    }
+
+    @Override
+    public void registerQueue(Integer taskId, DisruptorQueue recvQueu) {
+
+    }
+
+    @Override
+    public void enqueue(TaskMessage message) {
+
+    }
+
+    @Override
+    public void send(List<TaskMessage> messages) {
+
+    }
+
+    @Override
+    public void send(TaskMessage message) {
+
+    }
+
+    @Override
+    public void close() {
+
+    }
+
+    @Override
+    public boolean isClosed() {
+        return false;
     }
 }
 
