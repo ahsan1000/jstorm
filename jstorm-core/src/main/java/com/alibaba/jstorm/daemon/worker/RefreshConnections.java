@@ -26,8 +26,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import com.alibaba.jstorm.message.internode.InterNodeClient;
-import com.alibaba.jstorm.message.internode.InterNodeServer;
+import com.alibaba.jstorm.message.intranode.IntraNodeClient;
+import com.alibaba.jstorm.message.intranode.IntraNodeServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -273,10 +273,12 @@ public class RefreshConnections extends RunnableCallback {
                     }
                 }
 
+                String baseFile = (String) conf.get(Config.STORM_MESSAGING_INTRANODE_BASE_FILE);
                 // TODO: Remvoe connectiuons
                 for (WorkerSlot intra_port : need_intra_connection) {
                     // TODO: pass worker id
-                    intraNodeConnections.put(intra_port.getPort(), new InterNodeClient());
+                    IConnection connection = new IntraNodeClient(baseFile, intra_port.getNodeId(), IntraNodeServer.DEFAULT_FILE_SIZE, 1024);
+                    intraNodeConnections.put(intra_port.getPort(), connection);
                 }
 
                 // create new connection

@@ -34,8 +34,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import com.alibaba.jstorm.message.internode.InterNodeClient;
-import com.alibaba.jstorm.message.internode.InterNodeServer;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -163,7 +161,7 @@ public class WorkerData {
     private IConnection recvConnection;
 
     /** This is the intranode server */
-    private InterNodeServer interNodeServer;
+    private IConnection intraNodeServer;
 
     @SuppressWarnings({ "rawtypes", "unchecked" })
     public WorkerData(Map conf, IContext context, String topology_id,
@@ -626,4 +624,11 @@ public class WorkerData {
 		this.recvConnection = recvConnection;
 	}
 
+    public IConnection getIntraNodeServer() {
+        return intraNodeServer;
+    }
+
+    public void setIntraNodeServer(IConnection intraNodeServer) {
+        this.intraNodeServer = intraNodeServer;
+    }
 }

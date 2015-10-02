@@ -1,4 +1,4 @@
-package com.alibaba.jstorm.message.intranodesample;
+package com.alibaba.jstorm.message.intranode;
 
 import backtype.storm.messaging.IConnection;
 import backtype.storm.messaging.TaskMessage;
@@ -14,52 +14,65 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class IntraNodeServer implements IConnection {
     private static Logger LOG = LoggerFactory.getLogger(IntraNodeServer.class);
+    public static final int LONG_BYTES = 8;
+    public static final int INTEGER_BYTES = 4;
+    public static final long DEFAULT_FILE_SIZE = 2000000L;
 
     // 2 Longs for uuid, 1 int for total number of packets, and 1 int for packet number
-    private static int metaDataExtent = 2*Long.BYTES + 2*Integer.BYTES;
+    private static int metaDataExtent = 2 * LONG_BYTES + 2 * INTEGER_BYTES;
     private HashMap<UUID, ArrayList<ByteBuffer>> msgs = new HashMap<UUID, ArrayList<ByteBuffer>>();
     private ConcurrentHashMap<Integer, DisruptorQueue> deserializeQueues;
 
     private MappedBusReader reader;
+    private final int packetSize = 64;
 
-    public void run() {
+    private boolean run = true;
+
+    private Thread serverThread;
+
+    public IntraNodeServer(String baseFile, String supervisorId, long fileSize, ConcurrentHashMap<Integer, DisruptorQueue> deserializeQueues) {
+        this.deserializeQueues = deserializeQueues;
+        this.reader = new MappedBusReader(supervisorId, fileSize, packetSize);
         try {
-            final int packetSize = 64;
-            this.reader = new MappedBusReader("test-bytearray", 2000000L, packetSize);
             reader.open();
 
-            byte[] bytes = new byte[packetSize];
-            ByteBuffer buffer = ByteBuffer.wrap(bytes);
+            serverThread = new Thread(new ServerWorker());
+            serverThread.start();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
 
-            while (true) {
-                if (reader.next()) {
-                    int length = reader.readBuffer(bytes, 0);
-                    assert length == packetSize;
-                    final UUID uuid = new UUID(buffer.getLong(0),
-                                               buffer.getLong(Long.BYTES));
-                    // TODO - test
-                    /*final String tmp = "numPackets:" + buffer.getInt(2 * Long.BYTES)
-                                     + "packetNumber:" + buffer.getInt(
-                        2 * Long.BYTES + Integer.BYTES);
-                    System.out.println(tmp);*/
-                    if (msgs.containsKey(uuid)){
-                        final ArrayList<ByteBuffer> packets = msgs.get(uuid);
-                        packets.add(ByteBuffer.wrap(Arrays.copyOf(bytes,
-                                                                  bytes.length)));
-                        if (packets.size() == buffer.getInt(2*Long.BYTES)){
-                            createMsg(msgs.remove(uuid));
+    public class ServerWorker implements Runnable {
+        public void run() {
+            try {
+                byte[] bytes = new byte[packetSize];
+                ByteBuffer buffer = ByteBuffer.wrap(bytes);
+
+                while (run) {
+                    if (reader.next()) {
+                        int length = reader.readBuffer(bytes, 0);
+                        assert length == packetSize;
+                        final UUID uuid = new UUID(buffer.getLong(0),
+                                buffer.getLong(LONG_BYTES));
+                        if (msgs.containsKey(uuid)) {
+                            final ArrayList<ByteBuffer> packets = msgs.get(uuid);
+                            packets.add(ByteBuffer.wrap(Arrays.copyOf(bytes,
+                                    bytes.length)));
+                            if (packets.size() == buffer.getInt(2 * LONG_BYTES)) {
+                                createMsg(msgs.remove(uuid));
+                            }
+                        } else {
+                            final ArrayList<ByteBuffer> packets = new ArrayList<>();
+                            packets.add(ByteBuffer.wrap(Arrays.copyOf(bytes,
+                                    bytes.length)));
+                            msgs.put(uuid, packets);
                         }
-                    } else{
-
-                        final ArrayList<ByteBuffer> packets = new ArrayList<>();
-                        packets.add(ByteBuffer.wrap(Arrays.copyOf(bytes,
-                                                                  bytes.length)));
-                        msgs.put(uuid, packets);
                     }
                 }
+            } catch (Exception e) {
+                throw new RuntimeException(e);
             }
-        } catch(Exception e) {
-            throw new RuntimeException(e);
         }
     }
 
@@ -67,7 +80,7 @@ public class IntraNodeServer implements IConnection {
         Collections.sort(packets, new Comparator<ByteBuffer>() {
             @Override
             public int compare(ByteBuffer p1, ByteBuffer p2) {
-                int offset = 2*Long.BYTES;
+                int offset = 2*LONG_BYTES;
                 final int packetNum1 = p1.getInt(offset);
                 final int packetNum2 = p2.getInt(offset);
                 return packetNum1 < packetNum2 ? -1 : (packetNum1 == packetNum2 ? 0 : 1);
@@ -77,15 +90,15 @@ public class IntraNodeServer implements IConnection {
         ByteBuffer packet = packets.get(packetNumber);
         int packetSize = packet.capacity();
         int packetDataSize = packet.capacity() - metaDataExtent;
-        int offset = 2*Long.BYTES+2*Integer.BYTES;
+        int offset = 2*LONG_BYTES+2*INTEGER_BYTES;
         int task = packet.getInt(offset);
-        offset += Integer.BYTES;
+        offset += INTEGER_BYTES;
         int contentLength = packet.getInt(offset);
-        offset += Integer.BYTES;
+        offset += INTEGER_BYTES;
         int compIdLength = packet.getInt(offset);
-        offset += Integer.BYTES;
+        offset += INTEGER_BYTES;
         int streamLength = packet.getInt(offset);
-        offset += Integer.BYTES;
+        offset += INTEGER_BYTES;
 
         byte[] content = new byte[contentLength];
         byte[] compId = new byte[compIdLength];
@@ -98,7 +111,7 @@ public class IntraNodeServer implements IConnection {
             if (remainingCapacity == 0){
                 ++packetNumber;
                 remainingCapacity = packetDataSize;
-                offset = 2*Long.BYTES+2*Integer.BYTES;
+                offset = 2*LONG_BYTES+2*INTEGER_BYTES;
                 packet = packets.get(packetNumber);
             }
             int willRead = Math.min(remainingCapacity, remainingToRead);
@@ -115,7 +128,7 @@ public class IntraNodeServer implements IConnection {
             if (remainingCapacity == 0){
                 ++packetNumber;
                 remainingCapacity = packetDataSize;
-                offset = 2*Long.BYTES+2*Integer.BYTES;
+                offset = 2*LONG_BYTES+2*INTEGER_BYTES;
                 packet = packets.get(packetNumber);
             }
             int willRead = Math.min(remainingCapacity, remainingToRead);
@@ -132,7 +145,7 @@ public class IntraNodeServer implements IConnection {
             if (remainingCapacity == 0){
                 ++packetNumber;
                 remainingCapacity = packetDataSize;
-                offset = 2*Long.BYTES+2*Integer.BYTES;
+                offset = 2*LONG_BYTES+2*INTEGER_BYTES;
                 packet = packets.get(packetNumber);
             }
             int willRead = Math.min(remainingCapacity, remainingToRead);
@@ -185,9 +198,14 @@ public class IntraNodeServer implements IConnection {
     @Override
     public void close() {
         try {
+            run = false;
+            if (serverThread != null) {
+                serverThread.join();
+            }
             reader.close();
         } catch (IOException e) {
             LOG.warn("Failed to close reader", e);
+        } catch (InterruptedException ignore) {
         }
     }
 

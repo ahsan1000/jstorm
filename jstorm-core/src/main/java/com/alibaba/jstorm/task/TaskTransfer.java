@@ -24,8 +24,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import backtype.storm.generated.GlobalStreamId;
 import backtype.storm.tuple.Tuple;
-import backtype.storm.tuple.TupleImplExt;
-import com.alibaba.jstorm.message.internode.InterNodeClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -1423,6 +1423,9 @@ public class Config extends HashMap<String, Object> {
      */
     public static final String COLLECTIVE_USE_PIPE_LINE = "topology.collective.use.pipeline";
 
+    public static final String STORM_MESSAGING_INTRANODE_PACKET_SIZE = "storm.messaging.intranode.packet_size";
+    public static final String STORM_MESSAGING_INTRANODE_BASE_FILE = "storm.messaging.intranode.base_file";
+
     public static void setClasspath(Map conf, String cp) {
         conf.put(Config.TOPOLOGY_CLASSPATH, cp);
     }

@@ -1,4 +1,4 @@
-package com.alibaba.jstorm.message.intranodesample;
+package com.alibaba.jstorm.message.intranode;
 
 import backtype.storm.messaging.IConnection;
 import backtype.storm.messaging.TaskMessage;
@@ -10,42 +10,25 @@ import org.slf4j.LoggerFactory;
 import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
 public class IntraNodeClient implements IConnection {
     private static Logger LOG = LoggerFactory.getLogger(IntraNodeServer.class);
-
+    public static final int LONG_BYTES = 8;
+    public static final int INTEGER_BYTES = 4;
     // 2 Longs for uuid, 1 int for total number of packets, and 1 int for packet number
-    private static int metaDataExtent = 2*Long.BYTES + 2*Integer.BYTES;
+    private static int metaDataExtent = 2*LONG_BYTES + 2*INTEGER_BYTES;
     // 1 int for task#, 1 int for content.length, 1 int for componentID.length, 1 int for stream.length
-    private static int constMsgExtent = 4*Integer.BYTES;
-    private final String fileName;
-    private final long fileSize;
+    private static int constMsgExtent = 4*INTEGER_BYTES;
     private final int packetSize;
     private final int packetDataSize;
-    private int clientID;
     private MappedBusWriter writer;
     private ByteBuffer packet;
     private byte[] packetBytes;
 
-    // TODO - test
-    /*public static void main(String[] args) throws IOException {
-        IntraNodeClient client = new IntraNodeClient(27, "test-bytearray", 2000000L, 64);
-        for (int i = 0; i < 2; ++i) {
-            byte[] content = ("I am " + i +" and time is " + new Date()).getBytes();
-            String compId = "component " + i;
-            String stream = "stream " + i +" ha ha";
-            TaskMessage msg = new TaskMessage(i, content, compId, stream);
-            client.write(msg);
-        }
-    }*/
-
-    public IntraNodeClient(String fileName, long fileSize, int packetSize)
+    public IntraNodeClient(String baseFile, String supervisorId, long fileSize, int packetSize)
         throws IOException {
-        this.fileName = fileName;
-        this.fileSize = fileSize;
         if (packetSize < metaDataExtent+constMsgExtent){
             throw new RuntimeException("Packet size (" + packetSize + ") should be greater or equal to " + (metaDataExtent+constMsgExtent) + "");
         }
@@ -55,7 +38,7 @@ public class IntraNodeClient implements IConnection {
         packetBytes = new byte[packetSize];
         this.packet = ByteBuffer.wrap(packetBytes);
 
-        writer = new MappedBusWriter(fileName, fileSize, packetSize, false);
+        writer = new MappedBusWriter(supervisorId, fileSize, packetSize, false);
         writer.open();
     }
 
@@ -92,21 +75,21 @@ public class IntraNodeClient implements IConnection {
         int packetNumber = 0;
         int offset = 0;
         packet.putLong(offset, uuid.getMostSignificantBits());
-        offset+=Long.BYTES;
+        offset+=LONG_BYTES;
         packet.putLong(offset, uuid.getLeastSignificantBits());
-        offset+=Long.BYTES;
+        offset+=LONG_BYTES;
         packet.putInt(offset, numPackets);
-        offset+=Integer.BYTES;
+        offset+=INTEGER_BYTES;
         packet.putInt(offset, packetNumber);
-        offset+=Integer.BYTES;
+        offset+=INTEGER_BYTES;
         packet.putInt(offset, msg.task());
-        offset+=Integer.BYTES;
+        offset+=INTEGER_BYTES;
         packet.putInt(offset, content.length);
-        offset+=Integer.BYTES;
+        offset+=INTEGER_BYTES;
         packet.putInt(offset, compIdLength);
-        offset+=Integer.BYTES;
+        offset+=INTEGER_BYTES;
         packet.putInt(offset, streamLength);
-        offset+=Integer.BYTES;
+        offset+=INTEGER_BYTES;
 
         int count = 0;
         while (count < content.length) {
@@ -116,9 +99,9 @@ public class IntraNodeClient implements IConnection {
                 writer.write(packetBytes, 0, packetSize);
                 ++packetNumber;
                 remainingCapacity = packetDataSize;
-                offset = 2*Long.BYTES+Integer.BYTES;
+                offset = 2*LONG_BYTES+INTEGER_BYTES;
                 packet.putInt(offset, packetNumber);
-                offset += Integer.BYTES;
+                offset += INTEGER_BYTES;
             }
             int willWrite = Math.min(remainingCapacity, remainingToWrite);
             packet.position(offset);
@@ -139,9 +122,9 @@ public class IntraNodeClient implements IConnection {
                 writer.write(packetBytes, 0, packetSize);
                 ++packetNumber;
                 remainingCapacity = packetDataSize;
-                offset = 2*Long.BYTES+Integer.BYTES;
+                offset = 2*LONG_BYTES+INTEGER_BYTES;
                 packet.putInt(offset, packetNumber);
-                offset += Integer.BYTES;
+                offset += INTEGER_BYTES;
             }
             int willWrite = Math.min(remainingCapacity, remainingToWrite);
             packet.position(offset);
@@ -162,9 +145,9 @@ public class IntraNodeClient implements IConnection {
                 writer.write(packetBytes, 0, packetSize);
                 ++packetNumber;
                 remainingCapacity = packetDataSize;
-                offset = 2*Long.BYTES+Integer.BYTES;
+                offset = 2*LONG_BYTES+INTEGER_BYTES;
                 packet.putInt(offset, packetNumber);
-                offset += Integer.BYTES;
+                offset += INTEGER_BYTES;
             }
             int willWrite = Math.min(remainingCapacity, remainingToWrite);
             packet.position(offset);
