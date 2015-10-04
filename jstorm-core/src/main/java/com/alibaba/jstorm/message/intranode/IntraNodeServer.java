@@ -17,6 +17,7 @@ public class IntraNodeServer implements IConnection {
     public static final int LONG_BYTES = 8;
     public static final int INTEGER_BYTES = 4;
     public static final long DEFAULT_FILE_SIZE = 2000000L;
+    public static final int PACKET_SIZE = 64;
 
     // 2 Longs for uuid, 1 int for total number of packets, and 1 int for packet number
     private static int metaDataExtent = 2 * LONG_BYTES + 2 * INTEGER_BYTES;
@@ -24,18 +25,20 @@ public class IntraNodeServer implements IConnection {
     private ConcurrentHashMap<Integer, DisruptorQueue> deserializeQueues;
 
     private MappedBusReader reader;
-    private final int packetSize = 64;
+    private final int packetSize = PACKET_SIZE;
 
     private boolean run = true;
 
     private Thread serverThread;
 
-    public IntraNodeServer(String baseFile, String supervisorId, long fileSize, ConcurrentHashMap<Integer, DisruptorQueue> deserializeQueues) {
+    public IntraNodeServer(String baseFile, String supervisorId, int taskId, long fileSize, ConcurrentHashMap<Integer, DisruptorQueue> deserializeQueues) {
         this.deserializeQueues = deserializeQueues;
-        this.reader = new MappedBusReader(supervisorId, fileSize, packetSize);
+        String sharedFile = baseFile + "/" + supervisorId + "_" + taskId;;
+
+        this.reader = new MappedBusReader(sharedFile, fileSize, packetSize);
         try {
             reader.open();
-
+            LOG.info("Starting intranode server: " + sharedFile);
             serverThread = new Thread(new ServerWorker());
             serverThread.start();
         } catch (IOException e) {
@@ -51,6 +54,7 @@ public class IntraNodeServer implements IConnection {
 
                 while (run) {
                     if (reader.next()) {
+                        LOG.info("Received memory message");
                         int length = reader.readBuffer(bytes, 0);
                         assert length == packetSize;
                         final UUID uuid = new UUID(buffer.getLong(0),
@@ -156,6 +160,7 @@ public class IntraNodeServer implements IConnection {
         }
 
         TaskMessage msg = new TaskMessage(task, content, new String(compId), new String(stream));
+        LOG.info("Recvd message: " + msg.task() + " " + msg.componentId() + ":" + msg.stream());
         enqueue(msg);
     }
 

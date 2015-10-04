@@ -53,7 +53,7 @@ storm.meta.serialization.delegate: "backtype.storm.serialization.DefaultSerializ
 nimbus.host: "localhost"
 nimbus.thrift.port: 7627
 nimbus.thrift.max_buffer_size: 10485760
-nimbus.childopts: " -Xms4g -Xmx4g -Xmn1536m -XX:PermSize=256m  -XX:SurvivorRatio=4 -XX:MaxTenuringThreshold=20 -XX:+UseConcMarkSweepGC  -XX:+UseCMSInitiatingOccupancyOnly -XX:CMSInitiatingOccupancyFraction=70 -XX:CMSFullGCsBeforeCompaction=5 -XX:+HeapDumpOnOutOfMemoryError  -XX:+UseCMSCompactAtFullCollection -XX:CMSMaxAbortablePrecleanTime=5000 "
+nimbus.childopts: " -Xms4g -Xmx4g -Xmn1536m -XX:PermSize=256m  -XX:SurvivorRatio=4 -XX:+UseConcMarkSweepGC  -XX:+UseCMSInitiatingOccupancyOnly -XX:CMSInitiatingOccupancyFraction=70 -XX:CMSFullGCsBeforeCompaction=5 -XX:+HeapDumpOnOutOfMemoryError  -XX:+UseCMSCompactAtFullCollection -XX:CMSMaxAbortablePrecleanTime=5000 "
 nimbus.task.timeout.secs: 240
 nimbus.supervisor.timeout.secs: 180
 nimbus.monitor.freq.secs: 10
@@ -163,7 +163,7 @@ supervisor.supervisors.commands: []
 ### worker.* configs are for task workers
 # worker gc configuration
 # worker.gc.path will put all gc logs and memory dump file
-worker.gc.childopts: " -XX:SurvivorRatio=4 -XX:MaxTenuringThreshold=15 -XX:+UseConcMarkSweepGC  -XX:+UseCMSInitiatingOccupancyOnly -XX:CMSInitiatingOccupancyFraction=70 -XX:CMSFullGCsBeforeCompaction=5 -XX:+HeapDumpOnOutOfMemoryError -verbose:gc -XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+UseCMSCompactAtFullCollection -XX:CMSMaxAbortablePrecleanTime=5000 "
+worker.gc.childopts: " -XX:SurvivorRatio=4 -XX:+UseConcMarkSweepGC  -XX:+UseCMSInitiatingOccupancyOnly -XX:CMSInitiatingOccupancyFraction=70 -XX:CMSFullGCsBeforeCompaction=5 -XX:+HeapDumpOnOutOfMemoryError -verbose:gc -XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+UseCMSCompactAtFullCollection -XX:CMSMaxAbortablePrecleanTime=5000 "
 worker.heartbeat.frequency.secs: 2
 worker.metric.report.frequency.secs: 60
 worker.classpath: ""
@@ -224,7 +224,7 @@ storm.messaging.netty.authentication: false
 storm.group.mapping.service.cache.duration.secs: 120
 
 # Intranode communications
-storm.messaging.intranode.packet_size: "/dev/shm"
+storm.messaging.intranode.base_file: "/run/shm"
 
 ### topology.* configs are for specific executing storms
 topology.enable.message.timeouts: true

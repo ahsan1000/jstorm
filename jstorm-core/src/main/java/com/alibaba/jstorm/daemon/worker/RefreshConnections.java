@@ -273,12 +273,35 @@ public class RefreshConnections extends RunnableCallback {
                     }
                 }
 
+                Set<Integer> intranode_current_connections = intraNodeConnections.keySet();
+                Set<Integer> intranode_new_connections = new HashSet<Integer>();
+                Set<Integer> intranode_remove_connections = new HashSet<Integer>();
+
+                //LOG.info("Need intra connections:" + need_intra_connection.size());
+                for (WorkerSlot worker : need_intra_connection) {
+                    int node_port = worker.getPort();
+                    if (!intranode_current_connections.contains(node_port)) {
+//                        LOG.info("Creating intranode client: " + workerData.getSupervisorId() + ":" + node_port);
+                        intranode_new_connections.add(node_port);
+                    } /*else {
+                        //LOG.info("Found intra connections:" + node_port);
+                    }*/
+                }
+
+                for (Integer node_port : intranode_current_connections) {
+                    WorkerSlot slot = new WorkerSlot(workerData.getSupervisorId(), node_port);
+                    if (!need_intra_connection.contains(slot)) {
+                        intranode_remove_connections.add(node_port);
+                    }
+                }
+
                 String baseFile = (String) conf.get(Config.STORM_MESSAGING_INTRANODE_BASE_FILE);
                 // TODO: Remvoe connectiuons
-                for (WorkerSlot intra_port : need_intra_connection) {
+                for (Integer intra_port : intranode_new_connections) {
+                    //LOG.info("Creating intranode client: " + workerData.getSupervisorId() + ":" + intra_port);
                     // TODO: pass worker id
-                    IConnection connection = new IntraNodeClient(baseFile, intra_port.getNodeId(), IntraNodeServer.DEFAULT_FILE_SIZE, 1024);
-                    intraNodeConnections.put(intra_port.getPort(), connection);
+                    IConnection connection = new IntraNodeClient(baseFile, workerData.getSupervisorId(), intra_port, IntraNodeServer.DEFAULT_FILE_SIZE, IntraNodeServer.PACKET_SIZE);
+                    intraNodeConnections.put(intra_port, connection);
                 }
 
                 // create new connection

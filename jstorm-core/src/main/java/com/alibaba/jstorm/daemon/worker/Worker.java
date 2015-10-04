@@ -188,7 +188,7 @@ public class Worker {
         IConnection recvConnection =
                 context.bind(topologyId, workerData.getPort(), workerData.getDeserializeQueues());
         String baseFile = (String) workerData.getConf().get(Config.STORM_MESSAGING_INTRANODE_BASE_FILE);
-        IConnection intraNodeServer = new IntraNodeServer(baseFile, workerData.getSupervisorId(),
+        IConnection intraNodeServer = new IntraNodeServer(baseFile, workerData.getSupervisorId(), workerData.getPort(),
                 IntraNodeServer.DEFAULT_FILE_SIZE, workerData.getDeserializeQueues());
 
         workerData.setRecvConnection(recvConnection);

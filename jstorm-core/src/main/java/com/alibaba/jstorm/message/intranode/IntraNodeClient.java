@@ -26,8 +26,9 @@ public class IntraNodeClient implements IConnection {
     private MappedBusWriter writer;
     private ByteBuffer packet;
     private byte[] packetBytes;
+    private String sharedFile;
 
-    public IntraNodeClient(String baseFile, String supervisorId, long fileSize, int packetSize)
+    public IntraNodeClient(String baseFile, String supervisorId, int taskId, long fileSize, int packetSize)
         throws IOException {
         if (packetSize < metaDataExtent+constMsgExtent){
             throw new RuntimeException("Packet size (" + packetSize + ") should be greater or equal to " + (metaDataExtent+constMsgExtent) + "");
@@ -37,12 +38,14 @@ public class IntraNodeClient implements IConnection {
 
         packetBytes = new byte[packetSize];
         this.packet = ByteBuffer.wrap(packetBytes);
-
-        writer = new MappedBusWriter(supervisorId, fileSize, packetSize, false);
+        sharedFile = baseFile + "/" + supervisorId + "_" + taskId;
+        LOG.info("Starting intrannode clien on: " + baseFile);
+        writer = new MappedBusWriter(sharedFile, fileSize, packetSize, false);
         writer.open();
     }
 
     private void write(TaskMessage msg) throws EOFException {
+        LOG.info("Writing message: " + msg.task() + " " + msg.componentId() + ":" + msg.stream() + " to: " + sharedFile);
         UUID uuid = UUID.randomUUID();
         byte[] content = msg.message();
         // extent is metadata + msg

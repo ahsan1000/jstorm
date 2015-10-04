@@ -298,8 +298,9 @@ public class TaskTransfer {
             String errormsg = "can`t not found IConnection to " + taskId;
             LOG.warn("Intra transfer warn", new Exception(errormsg));
         } else {
+            // LOG.info("***********" + thisNodePort.getNodeId() + ":" + nodePort.getNodeId());
             if (thisNodePort.getNodeId().equals(nodePort.getNodeId())) {
-                conn = intraNodeConnections.get(taskId);
+                // conn = intraNodeConnections.get(nodePort.getPort());
             }
             if (conn == null) {
                 conn = nodeportSocket.get(nodePort);
