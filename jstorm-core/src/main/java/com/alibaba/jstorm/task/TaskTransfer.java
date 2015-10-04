@@ -172,7 +172,7 @@ public class TaskTransfer {
                             if (tupleMessage == null) {
                                 tupleMessage = serializer.serialize(tuple);
                             }
-                            TaskMessage taskMessage = new TaskMessage(task, tupleMessage);
+                            TaskMessage taskMessage = new TaskMessage(task, tupleMessage, tuple.getSourceComponent(), tuple.getSourceStreamId());
                             IConnection conn = getConnection(task);
                             if (conn != null) {
                                 conn.send(taskMessage);
