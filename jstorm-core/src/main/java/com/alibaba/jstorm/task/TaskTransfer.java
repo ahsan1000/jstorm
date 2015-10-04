@@ -174,7 +174,7 @@ public class TaskTransfer {
                             if (tupleMessage == null) {
                                 tupleMessage = serializer.serialize(tuple);
                             }
-                            TaskMessage taskMessage = new TaskMessage(task, tupleMessage);
+                            TaskMessage taskMessage = new TaskMessage(task, tupleMessage, tuple.getSourceComponent(), tuple.getSourceStreamId());
                             IConnection conn = getConnection(task);
                             if (conn != null) {
                                 conn.send(taskMessage);
@@ -211,7 +211,7 @@ public class TaskTransfer {
     public void transfer(byte []tuple, Tuple tupleExt, int task) {
         DisruptorQueue exeQueue = innerTaskTransfer.get(task);
         if (exeQueue == null) {
-            TaskMessage taskMessage = new TaskMessage(task, tuple);
+            TaskMessage taskMessage = new TaskMessage(task, tuple, tupleExt.getSourceComponent(), tupleExt.getSourceStreamId());
             IConnection conn = getConnection(task);
             if (conn != null) {
                 conn.send(taskMessage);
@@ -300,7 +300,7 @@ public class TaskTransfer {
         } else {
             // LOG.info("***********" + thisNodePort.getNodeId() + ":" + nodePort.getNodeId());
             if (thisNodePort.getNodeId().equals(nodePort.getNodeId())) {
-                // conn = intraNodeConnections.get(nodePort.getPort());
+                 conn = intraNodeConnections.get(nodePort.getPort());
             }
             if (conn == null) {
                 conn = nodeportSocket.get(nodePort);

@@ -39,7 +39,7 @@ public class IntraNodeClient implements IConnection {
         packetBytes = new byte[packetSize];
         this.packet = ByteBuffer.wrap(packetBytes);
         sharedFile = baseFile + "/" + supervisorId + "_" + taskId;
-        LOG.info("Starting intrannode clien on: " + baseFile);
+        LOG.info("Starting intrannode clien on: " + sharedFile);
         writer = new MappedBusWriter(sharedFile, fileSize, packetSize, false);
         writer.open();
     }
