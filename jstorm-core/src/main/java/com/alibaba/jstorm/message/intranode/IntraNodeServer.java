@@ -74,6 +74,7 @@ public class IntraNodeServer implements IConnection {
                         }
                     }
                 }
+                LOG.info("Intranode server shutdown....");
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
