@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class IntraNodeClient implements IConnection {
     private static Logger LOG = LoggerFactory.getLogger(IntraNodeServer.class);
@@ -213,5 +214,20 @@ public class IntraNodeClient implements IConnection {
     @Override
     public boolean isClosed() {
         return false;
+    }
+
+    public static void main(String[] args) {
+//        String baseFile = "/home/supun/dev/projects/jstorm-modified";
+        String baseFile = "/dev/shm";
+        String nodeFile = "nodeFile";
+        IntraNodeServer server = new IntraNodeServer(baseFile, nodeFile, 1, IntraNodeServer.DEFAULT_FILE_SIZE, new ConcurrentHashMap<Integer, DisruptorQueue>());
+        try {
+            IntraNodeClient client = new IntraNodeClient(baseFile, nodeFile, 1, IntraNodeServer.DEFAULT_FILE_SIZE, IntraNodeServer.PACKET_SIZE);
+            for (int i = 0; i < 100; i++) {
+                client.send(new TaskMessage(1, "Hello".getBytes(), "1", "2"));
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }
