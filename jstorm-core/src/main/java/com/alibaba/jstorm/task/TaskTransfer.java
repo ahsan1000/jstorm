@@ -190,7 +190,14 @@ public class TaskTransfer {
             }
         } else {
 //            LOG.info("Transferring tuple via network {} --> {}", sourceTaskId, targetTaskId);
-            serializeQueue.publish(tuple);
+            int taskid = tuple.getTargetTaskId();
+            byte[] tupleMessage = serializer.serialize(tuple);
+            TaskMessage taskMessage = new TaskMessage(taskid, tupleMessage,
+                    tuple.getSourceComponent(), tuple.getSourceStreamId());
+            IConnection conn = getConnection(taskid);
+            if (conn != null) {
+                conn.send(taskMessage);
+            }
         }
     }
 
