@@ -66,8 +66,31 @@ public class CommunicationPipeLine {
     }
 
     private List<SupervisorWorker> buildList(TreeMap<String, TreeMap<Integer, TreeSet<Integer>>> mappings) {
+        List<SupervisorWorker> supervisorWorkers = new ArrayList<SupervisorWorker>();
+        for (Map.Entry<String, TreeMap<Integer, TreeSet<Integer>>> e : mappings.entrySet()) {
+            String supervisor = e.getKey();
 
-        return null;
+            TreeMap<Integer, TreeSet<Integer>> workers = e.getValue();
+            List<WorkerTask> workerTasks = new ArrayList<WorkerTask>();
+            for (Map.Entry<Integer, TreeSet<Integer>> w : workers.entrySet()) {
+                List<Integer> tasks = new ArrayList<Integer>(w.getValue());
+                Collections.sort(tasks);
+                WorkerTask workerTask = new WorkerTask(w.getKey(), tasks);
+                if (rootSupervisorId.equals(supervisor) && rootWorkerPort == w.getKey()) {
+                    workerTask.setPriority(10);
+                }
+                workerTasks.add(workerTask);
+            }
+            Collections.sort(workerTasks);
+            SupervisorWorker e1 = new SupervisorWorker(supervisor, workerTasks);
+            if (rootSupervisorId.equals(supervisor)) {
+                e1.setPriority(10);
+            }
+            supervisorWorkers.add(e1);
+        }
+        Collections.sort(supervisorWorkers);
+
+        return supervisorWorkers;
     }
 
     public void buildPipeLine(List<SupervisorWorker> supervisorWorkers) {
