@@ -14,8 +14,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class IntraNodeServer implements IConnection {
     private static Logger LOG = LoggerFactory.getLogger(IntraNodeServer.class);
-    public static final int LONG_BYTES = 8;
-    public static final int INTEGER_BYTES = 4;
+    public static final int LONG_BYTES = Long.BYTES;
+    public static final int INTEGER_BYTES = Integer.BYTES;
     public static final long DEFAULT_FILE_SIZE = 2000000L;
     public static final int PACKET_SIZE = 64;
 
@@ -51,27 +51,50 @@ public class IntraNodeServer implements IConnection {
             try {
                 byte[] bytes = new byte[packetSize];
                 ByteBuffer buffer = ByteBuffer.wrap(bytes);
-
+                int length, totalPackets;
+                UUID uuid;
+                ArrayList<ByteBuffer> packets;
+                boolean isFresh;
                 while (run) {
                     if (reader.next()) {
                         LOG.info("Received memory message");
-                        int length = reader.readBuffer(bytes, 0);
+                        length = reader.readBuffer(bytes, 0);
                         assert length == packetSize;
-                        final UUID uuid = new UUID(buffer.getLong(0),
+                        uuid = new UUID(buffer.getLong(0),
                                 buffer.getLong(LONG_BYTES));
-                        if (msgs.containsKey(uuid)) {
-                            final ArrayList<ByteBuffer> packets = msgs.get(uuid);
+                        totalPackets = buffer.getInt(2 * LONG_BYTES);
+                        packets = msgs.get(uuid);
+                        if ((isFresh = packets == null)){
+                            packets = new ArrayList<>();
+                        }
+                        packets.add(ByteBuffer.wrap(Arrays.copyOf(bytes,
+                                    bytes.length)));
+
+                        if (packets.size() == totalPackets){
+                            createMsg(isFresh ? packets : msgs.remove(uuid));
+                            continue;
+                        }
+                        if (isFresh){
+                            msgs.put(uuid, packets);
+                        }
+
+                        /*if (msgs.containsKey(uuid)) {
+                            packets = msgs.get(uuid);
                             packets.add(ByteBuffer.wrap(Arrays.copyOf(bytes,
                                     bytes.length)));
-                            if (packets.size() == buffer.getInt(2 * LONG_BYTES)) {
+                            if (packets.size() == totalPackets) {
                                 createMsg(msgs.remove(uuid));
                             }
                         } else {
-                            final ArrayList<ByteBuffer> packets = new ArrayList<>();
+                            packets = new ArrayList<>();
                             packets.add(ByteBuffer.wrap(Arrays.copyOf(bytes,
                                     bytes.length)));
+                            if (packets.size() == totalPackets) {
+                                createMsg(packets);
+                                continue;
+                            }
                             msgs.put(uuid, packets);
-                        }
+                        }*/
                     }
                 }
                 LOG.info("Intranode server shutdown....");

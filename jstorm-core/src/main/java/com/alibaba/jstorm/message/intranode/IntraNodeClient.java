@@ -10,14 +10,16 @@ import org.slf4j.LoggerFactory;
 import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class IntraNodeClient implements IConnection {
     private static Logger LOG = LoggerFactory.getLogger(IntraNodeServer.class);
-    public static final int LONG_BYTES = 8;
-    public static final int INTEGER_BYTES = 4;
+    public static final int LONG_BYTES = Long.BYTES;
+    public static final int INTEGER_BYTES = Integer.BYTES;
     // 2 Longs for uuid, 1 int for total number of packets, and 1 int for packet number
     private static int metaDataExtent = 2*LONG_BYTES + 2*INTEGER_BYTES;
     // 1 int for task#, 1 int for content.length, 1 int for componentID.length, 1 int for stream.length
@@ -52,7 +54,8 @@ public class IntraNodeClient implements IConnection {
         // extent is metadata + msg
         // metadata is,
         // 2 long for uuid
-        // 1 int for chunk number
+        // 1 int for total packets
+        // 1 int for packet number
         // msg is,
         // 1 int for task
         // 1 int for content length
@@ -217,9 +220,15 @@ public class IntraNodeClient implements IConnection {
     }
 
     public static void main(String[] args) {
-//        String baseFile = "/home/supun/dev/projects/jstorm-modified";
-        String baseFile = "/dev/shm";
+        String baseFile = "E:\\";
+//        String baseFile = "/dev/shm";
         String nodeFile = "nodeFile";
+        try {
+            Files.deleteIfExists(Paths.get(baseFile + "/" + nodeFile + "_" + 1));
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
         IntraNodeServer server = new IntraNodeServer(baseFile, nodeFile, 1, IntraNodeServer.DEFAULT_FILE_SIZE, new ConcurrentHashMap<Integer, DisruptorQueue>());
         try {
             IntraNodeClient client = new IntraNodeClient(baseFile, nodeFile, 1, IntraNodeServer.DEFAULT_FILE_SIZE, IntraNodeServer.PACKET_SIZE);
