@@ -77,24 +77,6 @@ public class IntraNodeServer implements IConnection {
                         if (isFresh){
                             msgs.put(uuid, packets);
                         }
-
-                        /*if (msgs.containsKey(uuid)) {
-                            packets = msgs.get(uuid);
-                            packets.add(ByteBuffer.wrap(Arrays.copyOf(bytes,
-                                    bytes.length)));
-                            if (packets.size() == totalPackets) {
-                                createMsg(msgs.remove(uuid));
-                            }
-                        } else {
-                            packets = new ArrayList<>();
-                            packets.add(ByteBuffer.wrap(Arrays.copyOf(bytes,
-                                    bytes.length)));
-                            if (packets.size() == totalPackets) {
-                                createMsg(packets);
-                                continue;
-                            }
-                            msgs.put(uuid, packets);
-                        }*/
                     }
                 }
                 LOG.info("Intranode server shutdown....");

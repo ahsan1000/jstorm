@@ -220,8 +220,8 @@ public class IntraNodeClient implements IConnection {
     }
 
     public static void main(String[] args) {
-        String baseFile = "E:\\";
-//        String baseFile = "/dev/shm";
+//        String baseFile = "E:\\";
+        String baseFile = "/dev/shm";
         String nodeFile = "nodeFile";
         try {
             Files.deleteIfExists(Paths.get(baseFile + "/" + nodeFile + "_" + 1));
