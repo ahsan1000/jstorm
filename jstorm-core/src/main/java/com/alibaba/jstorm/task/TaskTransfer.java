@@ -172,7 +172,7 @@ public class TaskTransfer {
                             if (tupleMessage == null) {
                                 tupleMessage = serializer.serialize(tuple);
                             }
-                            TaskMessage taskMessage = new TaskMessage(task, tupleMessage, tuple.getSourceComponent(), tuple.getSourceStreamId());
+                            TaskMessage taskMessage = new TaskMessage(task, tupleMessage, tuple.getSourceTask(), tuple.getSourceStreamId());
                             IConnection conn = getConnection(task);
                             if (conn != null) {
                                 conn.send(taskMessage);
@@ -193,7 +193,7 @@ public class TaskTransfer {
             int taskid = tuple.getTargetTaskId();
             byte[] tupleMessage = serializer.serialize(tuple);
             TaskMessage taskMessage = new TaskMessage(taskid, tupleMessage,
-                    tuple.getSourceComponent(), tuple.getSourceStreamId());
+                    tuple.getSourceTask(), tuple.getSourceStreamId());
             IConnection conn = getConnection(taskid);
             if (conn != null) {
                 conn.send(taskMessage);
@@ -201,8 +201,8 @@ public class TaskTransfer {
         }
     }
 
-    public void transfer(byte []tuple, int task, String componentId, String streamId) {
-        TaskMessage taskMessage = new TaskMessage(task, tuple, componentId, streamId);
+    public void transfer(byte []tuple, int task, int sourceTask, String streamId) {
+        TaskMessage taskMessage = new TaskMessage(task, tuple, sourceTask, streamId);
         IConnection conn = getConnection(task);
         if (conn != null) {
             conn.send(taskMessage);
@@ -282,7 +282,7 @@ public class TaskTransfer {
                 int taskid = tuple.getTargetTaskId();
                 byte[] tupleMessage = serializer.serialize(tuple);
                 TaskMessage taskMessage = new TaskMessage(taskid, tupleMessage,
-                        tuple.getSourceComponent(), tuple.getSourceStreamId());
+                        tuple.getSourceTask(), tuple.getSourceStreamId());
                 IConnection conn = getConnection(taskid);
                 if (conn != null) {
                     conn.send(taskMessage);

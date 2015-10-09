@@ -33,7 +33,6 @@ import backtype.storm.serialization.KryoTupleDeserializer;
 import backtype.storm.task.TopologyContext;
 import backtype.storm.tuple.Tuple;
 import backtype.storm.utils.DisruptorQueue;
-import backtype.storm.utils.Utils;
 import backtype.storm.utils.WorkerClassLoader;
 
 import com.alibaba.jstorm.callback.AsyncLoopThread;
@@ -221,7 +220,8 @@ public class TaskReceiver {
             // LOG.info("Task message stream: " + taskMessage.stream() + " component: " + taskMessage.componentId());
             Set<Integer> transferTasks = new HashSet<Integer>();
             String streamId = event.stream();
-            String sourceComponent = event.componentId();
+            int sourceTask = event.sourceTask();
+            String sourceComponent = topologyContext.getComponentId(sourceTask);
             GlobalStreamId globalStreamId = new GlobalStreamId(sourceComponent, streamId);
 //            LOG.info("Task Received message with stream ID: {} ", globalStreamId);
             StringBuilder innerTaskTextMsg = new StringBuilder();
@@ -242,7 +242,7 @@ public class TaskReceiver {
                             transferTasks.add(task);
                         } else {
                             outerTaskTextMsg.append(task).append(" ");
-                            taskTransfer.transfer(msg, task, sourceComponent, streamId);
+                            taskTransfer.transfer(msg, task, sourceTask, streamId);
                         }
                     } else {
                         innerTaskTextMsg.append(task).append(" ");

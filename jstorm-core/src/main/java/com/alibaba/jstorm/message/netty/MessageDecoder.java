@@ -127,7 +127,7 @@ public class MessageDecoder extends FrameDecoder {
             // case 2: task Message
             short task = code;
 
-            // Make sure that we have received at least an integer (length)
+            // Make sure that we have received at least 2 integers (length)
             if (available < 8) {
                 // need more data
                 buf.resetReaderIndex();
@@ -157,14 +157,14 @@ public class MessageDecoder extends FrameDecoder {
                 return null;
             }
 
-            String component = null;
+            int sourceTask = -1;
             String stream = null;
             if (headerLength > 0) {
                 ChannelBuffer header = buf.readBytes(headerLength);
                 String headerValue = new String(header.array());
                 String splits[] = headerValue.split(" ");
                 stream = splits[0];
-                component = splits[1];
+                sourceTask = Integer.parseInt(splits[1]);
             }
 
             // There's enough bytes in the buffer. Read it.
@@ -178,7 +178,7 @@ public class MessageDecoder extends FrameDecoder {
             // LOG.info("Receive task:{}, length: {}, data:{}",
             // task, length, JStormUtils.toPrintableString(rawBytes));
 
-            TaskMessage ret = new TaskMessage(task, rawBytes, component, stream);
+            TaskMessage ret = new TaskMessage(task, rawBytes, sourceTask, stream);
             recvSpeed.update(Double.valueOf(rawBytes.length + 6));
             return ret;
         } finally {

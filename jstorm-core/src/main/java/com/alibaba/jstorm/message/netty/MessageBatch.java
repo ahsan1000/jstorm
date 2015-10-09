@@ -104,7 +104,7 @@ class MessageBatch {
             return 0;
 
         int size = 10; // INT + INT + SHORT
-        String header = taskMsg.stream() + " " + taskMsg.componentId();
+        String header = taskMsg.stream() + " " + taskMsg.sourceTask();
         byte []headerBytes = header.getBytes();
         size += headerBytes.length;
         if (taskMsg.message() != null)
@@ -187,7 +187,7 @@ class MessageBatch {
 
         bout.writeShort((short) task_id);
         bout.writeInt(payload_len);
-        String header = message.stream() + " " + message.componentId();
+        String header = message.stream() + " " + message.sourceTask();
         byte []headerBytes = header.getBytes();
         bout.writeInt(headerBytes.length);
         bout.write(headerBytes);
