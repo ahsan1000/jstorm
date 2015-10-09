@@ -88,6 +88,8 @@ public class CommunicationPlanner {
         Boolean useFlatTree = (Boolean) conf.get(Config.COLLECTIVE_USE_FLAT_TREE);
         Boolean usePipeLine = (Boolean) conf.get(Config.COLLECTIVE_USE_PIPE_LINE);
         // assume we are in the top broadcasting, we build the tree from this node
+        String correspondingTaskNode = getNodeId(correspondingTaskId);
+        int correspondingTaskPort = getWorkerPort(correspondingTaskId);
         for (Map.Entry<String, Map<String, Grouping>> e : targets.entrySet()) {
             String stream = e.getKey();
 
@@ -111,14 +113,14 @@ public class CommunicationPlanner {
                     // go through the component tasks list to figure out the correct locations
                     mappings = exctractWorkerMappings(allTasks, taskNodePort);
                     if (usePipeLine != null && usePipeLine) {
-                        CommunicationPipeLine pipeLine = new CommunicationPipeLine(conf, correspondingTaskId, mappings);
+                        CommunicationPipeLine pipeLine = new CommunicationPipeLine(conf, correspondingTaskId, correspondingTaskNode, correspondingTaskPort, mappings);
                         downStreamTasks.addPipeLine(new GlobalTaskId(correspondingTaskId, stream), pipeLine);
                     } else {
                         CommunicationTree allTree;
                         if (useFlatTree != null && useFlatTree) {
-                            allTree = new CommunicationTree(conf, correspondingTaskId, mappings, true, true);
+                            allTree = new CommunicationTree(conf, correspondingTaskId, correspondingTaskNode, correspondingTaskPort, mappings, true, true);
                         } else {
-                            allTree = new CommunicationTree(conf, correspondingTaskId, mappings, true, false);
+                            allTree = new CommunicationTree(conf, correspondingTaskId, correspondingTaskNode, correspondingTaskPort, mappings, true, false);
                         }
 
                         GlobalTaskId streamId = new GlobalTaskId(correspondingTaskId, stream);
@@ -165,15 +167,17 @@ public class CommunicationPlanner {
                 mappings = exctractWorkerMappings(allTasks, taskNodePort);
 
                 for (int sourceTask : sourceTasks) {
+                    int rootTaskPort = getWorkerPort(sourceTask);
+                    String rootTaskNode = getNodeId(sourceTask);
                     if (usePipeLine != null && usePipeLine) {
-                        CommunicationPipeLine pipeLine = new CommunicationPipeLine(conf, sourceTask, mappings);
+                        CommunicationPipeLine pipeLine = new CommunicationPipeLine(conf, rootTaskPort, rootTaskNode, sourceTask, mappings);
                         downStreamTasks.addPipeLine(new GlobalTaskId(sourceTask, stream), pipeLine);
                     } else {
                         CommunicationTree tree;
                         if (useFlatTree != null && useFlatTree) {
-                            tree = new CommunicationTree(conf, sourceTask, mappings, true, true);
+                            tree = new CommunicationTree(conf, rootTaskPort, rootTaskNode, sourceTask, mappings, true, true);
                         } else {
-                            tree = new CommunicationTree(conf, sourceTask, mappings, true, false);
+                            tree = new CommunicationTree(conf, rootTaskPort, rootTaskNode, sourceTask, mappings, true, false);
                         }
                         LOG.info("TaskId: {}, StreamID: {}, Tree: {}", taskId, sourceGlobalStreamId, tree.printTree());
                         // query the tree to get the broadcast tasks
@@ -346,5 +350,15 @@ public class CommunicationPlanner {
             broadCastTasksForNodeWorker.add(t);
         }
         return broadCastTasks;
+    }
+
+    private int getWorkerPort(int taskId) {
+        ResourceWorkerSlot slot = taskNodePort.get(taskId);
+        return slot.getPort();
+    }
+
+    private String getNodeId(int taskId) {
+        ResourceWorkerSlot slot = taskNodePort.get(taskId);
+        return slot.getNodeId();
     }
 }

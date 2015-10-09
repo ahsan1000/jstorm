@@ -46,7 +46,7 @@ public class CommunicationPipeLine {
 
     private List<PipeLineNode> nodes = new ArrayList<PipeLineNode>();
 
-    public CommunicationPipeLine(Map conf, int rootTask, TreeMap<String, TreeMap<Integer, TreeSet<Integer>>> mappings) {
+    public CommunicationPipeLine(Map conf, int rootTask, String rootNode, int rootWorker, TreeMap<String, TreeMap<Integer, TreeSet<Integer>>> mappings) {
         this.rootTask = rootTask;
         buildPipeLine(mappings);
 

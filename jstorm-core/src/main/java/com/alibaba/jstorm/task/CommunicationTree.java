@@ -64,7 +64,7 @@ public class CommunicationTree {
      * Create a collective tree
      * @param conf topology configuration
      */
-    public CommunicationTree(Map conf, int rootTaskId,
+    public CommunicationTree(Map conf, int rootTaskId, String rootNode, int rootWorker,
                              TreeMap<String, TreeMap<Integer, TreeSet<Integer>>> mappings,
                              boolean expandingTree, boolean useFlatTree) {
         StringBuilder sb = new StringBuilder("Root Tasks: ");
