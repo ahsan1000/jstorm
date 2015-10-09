@@ -14,8 +14,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class IntraNodeServer implements IConnection {
     private static Logger LOG = LoggerFactory.getLogger(IntraNodeServer.class);
-    public static final int LONG_BYTES = Long.BYTES;
-    public static final int INTEGER_BYTES = Integer.BYTES;
+    public static final int LONG_BYTES = 8;
+    public static final int INTEGER_BYTES = 4;
     public static final long DEFAULT_FILE_SIZE = 2000000L;
     public static final int PACKET_SIZE = 64;
 
@@ -65,7 +65,7 @@ public class IntraNodeServer implements IConnection {
                         totalPackets = buffer.getInt(2 * LONG_BYTES);
                         packets = msgs.get(uuid);
                         if ((isFresh = packets == null)){
-                            packets = new ArrayList<>();
+                            packets = new ArrayList<ByteBuffer>();
                         }
                         packets.add(ByteBuffer.wrap(Arrays.copyOf(bytes,
                                     bytes.length)));
