@@ -14,6 +14,10 @@ public class CommunicationPipeLine {
 
     private PipeLineNode rootNode;
 
+    private String rootSupervisorId;
+
+    private int rootWorkerPort;
+
     private class PipeLineNode {
         int previousTask; // the previous task
         int sourceTask;   // which node of this set of nodes that act as the gateway
@@ -46,9 +50,13 @@ public class CommunicationPipeLine {
 
     private List<PipeLineNode> nodes = new ArrayList<PipeLineNode>();
 
-    public CommunicationPipeLine(Map conf, int rootTask, String rootNode, int rootWorker, TreeMap<String, TreeMap<Integer, TreeSet<Integer>>> mappings) {
+    public CommunicationPipeLine(Map conf, int rootTask, String rootSupervisorId, int rootWorkerPort, TreeMap<String, TreeMap<Integer, TreeSet<Integer>>> mappings) {
         this.rootTask = rootTask;
-        buildPipeLine(mappings);
+        this.rootSupervisorId = rootSupervisorId;
+        this.rootWorkerPort = rootWorkerPort;
+
+        List<SupervisorWorker> supervisorWorkers = buildList(mappings);
+        buildPipeLine(supervisorWorkers);
 
         StringBuilder sb = new StringBuilder();
         for (PipeLineNode n : nodes) {
@@ -57,14 +65,19 @@ public class CommunicationPipeLine {
         LOG.info(sb.toString());
     }
 
-    public void buildPipeLine(TreeMap<String, TreeMap<Integer, TreeSet<Integer>>> mappings) {
+    private List<SupervisorWorker> buildList(TreeMap<String, TreeMap<Integer, TreeSet<Integer>>> mappings) {
+
+        return null;
+    }
+
+    public void buildPipeLine(List<SupervisorWorker> supervisorWorkers) {
         rootNode = new PipeLineNode(-1);
         rootNode.sourceTask = rootTask;
         nodes.add(rootNode);
 
         PipeLineNode currentNode = rootNode;
-        for (Map.Entry<String, TreeMap<Integer, TreeSet<Integer>>> e : mappings.entrySet()) {
-            List<PipeLineNode> list = buildNodePipeLine(currentNode, e.getValue());
+        for (SupervisorWorker e : supervisorWorkers) {
+            List<PipeLineNode> list = buildNodePipeLine(currentNode, e.getWorkerTasksList());
             nodes.addAll(list);
             if (list.size() > 0) {
                 currentNode = list.get(list.size() - 1);
@@ -72,15 +85,15 @@ public class CommunicationPipeLine {
         }
     }
 
-    public List<PipeLineNode> buildNodePipeLine(PipeLineNode previousTask, TreeMap<Integer, TreeSet<Integer>> nodeMapping) {
+    public List<PipeLineNode> buildNodePipeLine(PipeLineNode previousTask, List<WorkerTask> nodeMapping) {
         List<PipeLineNode> pipeLineNodes = new ArrayList<PipeLineNode>();
         PipeLineNode currentPreviousTask = previousTask;
 
-        for (Map.Entry<Integer, TreeSet<Integer>> e : nodeMapping.entrySet()) {
+        for (WorkerTask e : nodeMapping) {
             PipeLineNode pipeLineNode = new PipeLineNode(currentPreviousTask.sourceTask);
             pipeLineNodes.add(pipeLineNode);
-            TreeSet<Integer> tasks = e.getValue();
-            pipeLineNode.sourceTask = tasks.first();
+            List<Integer> tasks = e.getTasks();
+            pipeLineNode.sourceTask = tasks.get(0);
             for (Integer t : tasks) {
                 if (t != pipeLineNode.sourceTask) {
                     pipeLineNode.inMemoryTasks.add(t);
