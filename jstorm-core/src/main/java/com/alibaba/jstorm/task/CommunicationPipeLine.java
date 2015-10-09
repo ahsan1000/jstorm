@@ -8,7 +8,7 @@ import java.util.*;
 public class CommunicationPipeLine {
     private Logger LOG = LoggerFactory.getLogger(CommunicationPipeLine.class);
 
-    private TreeSet<Integer> rootTaskIds = new TreeSet<Integer>();
+    private int rootTask;
 
     private boolean nodePipe = true;
 
@@ -46,8 +46,8 @@ public class CommunicationPipeLine {
 
     private List<PipeLineNode> nodes = new ArrayList<PipeLineNode>();
 
-    public CommunicationPipeLine(Map conf, TreeSet<Integer> rootTaskId, TreeMap<String, TreeMap<Integer, TreeSet<Integer>>> mappings) {
-        this.rootTaskIds = rootTaskId;
+    public CommunicationPipeLine(Map conf, int rootTask, TreeMap<String, TreeMap<Integer, TreeSet<Integer>>> mappings) {
+        this.rootTask = rootTask;
         buildPipeLine(mappings);
 
         StringBuilder sb = new StringBuilder();
@@ -59,7 +59,7 @@ public class CommunicationPipeLine {
 
     public void buildPipeLine(TreeMap<String, TreeMap<Integer, TreeSet<Integer>>> mappings) {
         rootNode = new PipeLineNode(-1);
-        rootNode.inMemoryTasks.addAll(rootTaskIds);
+        rootNode.sourceTask = rootTask;
         nodes.add(rootNode);
 
         PipeLineNode currentNode = rootNode;
@@ -94,8 +94,8 @@ public class CommunicationPipeLine {
         return pipeLineNodes;
     }
 
-    public TreeSet<Integer> rootTasks() {
-        return rootTaskIds;
+    public int rootTasks() {
+        return rootTask;
     }
 
     public TreeSet<Integer> getAllTasks(int taskId) {

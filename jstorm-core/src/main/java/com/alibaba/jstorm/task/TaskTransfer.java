@@ -136,7 +136,7 @@ public class TaskTransfer {
         int targetTaskId = tuple.getTargetTaskId();
         // this is equal to taskId
         int sourceTaskId = tuple.getSourceTask();
-        GlobalStreamId globalStreamId = new GlobalStreamId(tuple.getSourceComponent(), tuple.getSourceStreamId());
+        GlobalTaskId globalStreamId = new GlobalTaskId(sourceTaskId, tuple.getSourceStreamId());
 
         // first check weather we need to skip
         if (downStreamTasks.isSkip(globalStreamId, sourceTaskId, targetTaskId)) {
@@ -153,7 +153,7 @@ public class TaskTransfer {
         if (exeQueue != null) {
             // in this case we are not going to hit TaskReceiver, so we need to do what we did there
             // lets determine weather we need to send this message to other tasks as well acting as an intermediary
-            Map<GlobalStreamId, Set<Integer>> downsTasks = downStreamTasks.allDownStreamTasks(mapping);
+            Map<GlobalTaskId, Set<Integer>> downsTasks = downStreamTasks.allDownStreamTasks(mapping);
             // LOG.info("Task TRANSFER taskId: {}, down tasks: {}", mapping, DownstreamTasks.printDownTasks(downsTasks));
             if (downsTasks != null && downsTasks.containsKey(globalStreamId) && !downsTasks.get(globalStreamId).isEmpty()) {
                 Set<Integer> tasks = downsTasks.get(globalStreamId);
