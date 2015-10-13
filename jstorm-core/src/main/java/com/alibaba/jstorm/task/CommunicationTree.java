@@ -64,7 +64,7 @@ public class CommunicationTree {
      * Create a collective tree
      * @param conf topology configuration
      */
-    public CommunicationTree(Map conf, int rootTaskId, String rootNode, int rootWorker,
+    public CommunicationTree(Map conf, int rootTaskId, String rootSupervisorId, int rootWorkerPort,
                              TreeMap<String, TreeMap<Integer, TreeSet<Integer>>> mappings,
                              boolean expandingTree, boolean useFlatTree) {
         StringBuilder sb = new StringBuilder("Root Tasks: ");
@@ -103,7 +103,7 @@ public class CommunicationTree {
         root = new TreeNode();
         root.taskIds.add(rootTaskId);
 
-        List<SupervisorWorker> supervisorWorkers = buildList(mappings, rootNode, rootWorker);
+        List<SupervisorWorker> supervisorWorkers = buildList(mappings, rootSupervisorId, rootWorkerPort);
         buildTree(root, supervisorWorkers);
         // LOG.info("Tree: {}", BTreePrinter.print(root));
     }

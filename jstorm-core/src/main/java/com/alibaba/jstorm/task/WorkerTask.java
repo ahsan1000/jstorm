@@ -1,7 +1,5 @@
 package com.alibaba.jstorm.task;
 
-import com.alibaba.jstorm.daemon.worker.Worker;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;

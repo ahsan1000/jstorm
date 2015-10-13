@@ -37,4 +37,12 @@ public class GlobalTaskId {
         result = 31 * result + (stream != null ? stream.hashCode() : 0);
         return result;
     }
+
+    @Override
+    public String toString() {
+        return "GlobalTaskId{" +
+                "task=" + task +
+                ", stream='" + stream + '\'' +
+                '}';
+    }
 }
