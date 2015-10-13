@@ -112,6 +112,7 @@ public class CommunicationPlanner {
                     TreeSet<Integer> rootTasks = new TreeSet<Integer>(ts);
                     // go through the component tasks list to figure out the correct locations
                     mappings = exctractWorkerMappings(allTasks, taskNodePort);
+                    LOG.info("Task ID passed: {}", correspondingTaskId);
                     if (usePipeLine != null && usePipeLine) {
                         CommunicationPipeLine pipeLine = new CommunicationPipeLine(conf, correspondingTaskId, correspondingTaskNode, correspondingTaskPort, mappings);
                         downStreamTasks.addPipeLine(new GlobalTaskId(correspondingTaskId, stream), pipeLine);
@@ -169,15 +170,16 @@ public class CommunicationPlanner {
                 for (int sourceTask : sourceTasks) {
                     int rootTaskPort = getWorkerPort(sourceTask);
                     String rootTaskNode = getNodeId(sourceTask);
+                    LOG.info("Task ID passed: {}", rootTaskPort);
                     if (usePipeLine != null && usePipeLine) {
-                        CommunicationPipeLine pipeLine = new CommunicationPipeLine(conf, rootTaskPort, rootTaskNode, sourceTask, mappings);
+                        CommunicationPipeLine pipeLine = new CommunicationPipeLine(conf, sourceTask, rootTaskNode, rootTaskPort, mappings);
                         downStreamTasks.addPipeLine(new GlobalTaskId(sourceTask, stream), pipeLine);
                     } else {
                         CommunicationTree tree;
                         if (useFlatTree != null && useFlatTree) {
-                            tree = new CommunicationTree(conf, rootTaskPort, rootTaskNode, sourceTask, mappings, true, true);
+                            tree = new CommunicationTree(conf, sourceTask, rootTaskNode, rootTaskPort, mappings, true, true);
                         } else {
-                            tree = new CommunicationTree(conf, rootTaskPort, rootTaskNode, sourceTask, mappings, true, false);
+                            tree = new CommunicationTree(conf, sourceTask, rootTaskNode, rootTaskPort, mappings, true, false);
                         }
                         LOG.info("TaskId: {}, StreamID: {}, Tree: {}", taskId, sourceGlobalStreamId, tree.printTree());
                         // query the tree to get the broadcast tasks
