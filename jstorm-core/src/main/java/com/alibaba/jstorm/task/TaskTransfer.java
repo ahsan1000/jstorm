@@ -21,6 +21,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import backtype.storm.generated.GlobalStreamId;
 import backtype.storm.tuple.Tuple;
@@ -84,6 +86,8 @@ public class TaskTransfer {
 
     // broadcast tasks for each stream
     private DownstreamTasks downStreamTasks;
+
+    private Lock lock = new ReentrantLock();
 
     public TaskTransfer(Task task, String taskName,
             KryoTupleSerializer serializer, TaskStatus taskStatus,
@@ -170,7 +174,12 @@ public class TaskTransfer {
                         } else {
                             outerTaskTextMsg.append(task).append(" ");
                             if (tupleMessage == null) {
-                                tupleMessage = serializer.serialize(tuple);
+                                lock.lock();
+                                try {
+                                    tupleMessage = serializer.serialize(tuple);
+                                } finally {
+                                    lock.unlock();
+                                }
                             }
                             TaskMessage taskMessage = new TaskMessage(task, tupleMessage, tuple.getSourceTask(), tuple.getSourceStreamId());
                             IConnection conn = getConnection(task);
@@ -191,7 +200,13 @@ public class TaskTransfer {
         } else {
 //            LOG.info("Transferring tuple via network {} --> {}", sourceTaskId, targetTaskId);
             int taskid = tuple.getTargetTaskId();
-            byte[] tupleMessage = serializer.serialize(tuple);
+            byte[] tupleMessage;
+            lock.lock();
+            try {
+                tupleMessage = serializer.serialize(tuple);
+            } finally {
+                lock.unlock();
+            }
             TaskMessage taskMessage = new TaskMessage(taskid, tupleMessage,
                     tuple.getSourceTask(), tuple.getSourceStreamId());
             IConnection conn = getConnection(taskid);
@@ -280,7 +295,13 @@ public class TaskTransfer {
             try {
                 TupleExt tuple = (TupleExt) event;
                 int taskid = tuple.getTargetTaskId();
-                byte[] tupleMessage = serializer.serialize(tuple);
+                byte[] tupleMessage;
+                lock.lock();
+                try {
+                    tupleMessage = serializer.serialize(tuple);
+                } finally {
+                    lock.unlock();
+                }
                 TaskMessage taskMessage = new TaskMessage(taskid, tupleMessage,
                         tuple.getSourceTask(), tuple.getSourceStreamId());
                 IConnection conn = getConnection(taskid);
