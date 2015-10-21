@@ -87,8 +87,6 @@ public class TaskTransfer {
     // broadcast tasks for each stream
     private DownstreamTasks downStreamTasks;
 
-    private Lock lock = new ReentrantLock();
-
     public TaskTransfer(Task task, String taskName,
             KryoTupleSerializer serializer, TaskStatus taskStatus,
             WorkerData workerData, int thisTaskId) {
@@ -174,12 +172,7 @@ public class TaskTransfer {
                         } else {
                             outerTaskTextMsg.append(task).append(" ");
                             if (tupleMessage == null) {
-                                lock.lock();
-                                try {
-                                    tupleMessage = serializer.serialize(tuple);
-                                } finally {
-                                    lock.unlock();
-                                }
+                                tupleMessage = serializer.serialize(tuple);
                             }
                             TaskMessage taskMessage = new TaskMessage(task, tupleMessage, tuple.getSourceTask(), tuple.getSourceStreamId());
                             IConnection conn = getConnection(task);
@@ -201,12 +194,7 @@ public class TaskTransfer {
 //            LOG.info("Transferring tuple via network {} --> {}", sourceTaskId, targetTaskId);
             int taskid = tuple.getTargetTaskId();
             byte[] tupleMessage;
-            lock.lock();
-            try {
-                tupleMessage = serializer.serialize(tuple);
-            } finally {
-                lock.unlock();
-            }
+            tupleMessage = serializer.serialize(tuple);
             TaskMessage taskMessage = new TaskMessage(taskid, tupleMessage,
                     tuple.getSourceTask(), tuple.getSourceStreamId());
             IConnection conn = getConnection(taskid);
@@ -296,12 +284,8 @@ public class TaskTransfer {
                 TupleExt tuple = (TupleExt) event;
                 int taskid = tuple.getTargetTaskId();
                 byte[] tupleMessage;
-                lock.lock();
-                try {
-                    tupleMessage = serializer.serialize(tuple);
-                } finally {
-                    lock.unlock();
-                }
+                tupleMessage = serializer.serialize(tuple);
+
                 TaskMessage taskMessage = new TaskMessage(taskid, tupleMessage,
                         tuple.getSourceTask(), tuple.getSourceStreamId());
                 IConnection conn = getConnection(taskid);
