@@ -31,7 +31,7 @@ public class IntraNodeServer implements IConnection {
 
     private Thread serverThread;
 
-    int count = 0;
+    int count = 0, count2 = 0;
     public IntraNodeServer(String baseFile, String supervisorId, int taskId, long fileSize, ConcurrentHashMap<Integer, DisruptorQueue> deserializeQueues) {
         this.deserializeQueues = deserializeQueues;
         String sharedFile = baseFile + "/" + supervisorId + "_" + taskId;;
@@ -71,6 +71,7 @@ public class IntraNodeServer implements IConnection {
                         packets.add(ByteBuffer.wrap(Arrays.copyOf(bytes,
                                     bytes.length)));
 
+                        count2++;
                         if (packets.size() == totalPackets){
                             createMsg(isFresh ? packets : msgs.remove(uuid));
                             continue;
@@ -78,6 +79,10 @@ public class IntraNodeServer implements IConnection {
                         if (isFresh){
                             msgs.put(uuid, packets);
                         }
+                    }
+                    if (count > 900) {
+                         System.out.println("Size of in complete messages: " + msgs.size() + " count2: " + count2);
+                        Thread.sleep(100);
                     }
                 }
                 LOG.info("Intranode server shutdown....");

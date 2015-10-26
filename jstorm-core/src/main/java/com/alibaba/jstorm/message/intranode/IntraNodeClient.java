@@ -47,7 +47,7 @@ public class IntraNodeClient implements IConnection {
         writer = new MappedBusWriter(sharedFile, fileSize, packetSize, false);
         writer.open();
     }
-
+    int totalPacketCount = 0;
     private void write(TaskMessage msg) throws EOFException {
         LOG.info("Writing message: " + msg.task() + " " + msg.componentId() + ":" + msg.stream() + " to: " + sharedFile);
         UUID uuid = UUID.randomUUID();
@@ -98,12 +98,13 @@ public class IntraNodeClient implements IConnection {
         offset+=INTEGER_BYTES;
         packet.putInt(offset, streamLength);
         offset+=INTEGER_BYTES;
-
+        int packetCount = 0;
         int count = 0;
         while (count < content.length) {
             int remainingToWrite = content.length - count;
             int remainingCapacity = packetSize - offset;
             if (remainingCapacity == 0){
+                packetCount++;
                 writer.write(packetBytes, 0, packetSize);
                 ++packetNumber;
                 remainingCapacity = packetDataSize;
@@ -127,6 +128,7 @@ public class IntraNodeClient implements IConnection {
             int remainingToWrite = compIdLength - count;
             int remainingCapacity = packetSize - offset;
             if (remainingCapacity == 0){
+                packetCount++;
                 writer.write(packetBytes, 0, packetSize);
                 ++packetNumber;
                 remainingCapacity = packetDataSize;
@@ -150,6 +152,7 @@ public class IntraNodeClient implements IConnection {
             int remainingToWrite = streamLength - count;
             int remainingCapacity = packetSize - offset;
             if (remainingCapacity == 0){
+                packetCount++;
                 writer.write(packetBytes, 0, packetSize);
                 ++packetNumber;
                 remainingCapacity = packetDataSize;
@@ -163,8 +166,12 @@ public class IntraNodeClient implements IConnection {
             count+=willWrite;
             offset+=willWrite;
         }
-
+        packetCount++;
         writer.write(packetBytes, 0, packetSize);
+        if (packetCount != 2) {
+            System.out.println("*************************************************************************************************");
+        }
+        totalPacketCount += packetCount;
 
     }
 
@@ -235,14 +242,16 @@ public class IntraNodeClient implements IConnection {
 
         try {
             IntraNodeClient client = new IntraNodeClient(baseFile, nodeFile, 1, IntraNodeServer.DEFAULT_FILE_SIZE, IntraNodeServer.PACKET_SIZE);
-            String s = "";
+            String s = "adadadadfsdf0000000000000000000000008866660000000ad";
             Random random = new Random();
-            for (int i = 0; i< 50; i++) {
-                s += random.nextInt();
+            for (int i = 0; i< 1; i++) {
+                int z = (int) random.nextDouble();
+                s += z;
             }
             for (int i = 0; i < 1000; i++) {
-                client.send(new TaskMessage(1, s.getBytes(), "1", "2"));
+                client.send(new TaskMessage(1, s.getBytes(), "1", ""+i));
             }
+            System.out.println("******************************************   total packet count: " + client.totalPacketCount);
         } catch (IOException e) {
             e.printStackTrace();
         }
