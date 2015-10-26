@@ -80,7 +80,8 @@ public class MappedBusReader {
 	protected long timeoutCounter;
 
 	private boolean typeRead;
-	
+
+	private boolean clear;
 	/**
 	 * Constructs a new reader.
 	 *
@@ -88,10 +89,11 @@ public class MappedBusReader {
 	 * @param fileSize the maximum size of the file
 	 * @param recordSize the maximum size of a record (excluding status flags and meta data)
 	 */
-	public MappedBusReader(String fileName, long fileSize, int recordSize) {
+	public MappedBusReader(String fileName, long fileSize, int recordSize, boolean clear) {
 		this.fileName = fileName;
 		this.fileSize = fileSize;
 		this.recordSize = recordSize;
+		this.clear = clear;
 	}
 
 	/**
@@ -102,6 +104,11 @@ public class MappedBusReader {
 	public void open() throws IOException {
 		try {
 			mem = new MemoryMappedFile(fileName, fileSize);
+			if (clear) {
+				mem.putLongVolatile(Structure.Limit, Structure.Data);
+			} else {
+				mem.compareAndSwapLong(Structure.Limit, 0, Structure.Data);
+			}
 		} catch(Exception e) {
 			throw new IOException("Unable to open the file: " + fileName, e);
 		}

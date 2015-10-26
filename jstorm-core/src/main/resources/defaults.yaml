@@ -224,7 +224,7 @@ storm.messaging.netty.authentication: false
 storm.group.mapping.service.cache.duration.secs: 120
 
 # Intranode communications
-storm.messaging.intranode.base_file: "/home/supun/dev/projects/dist/jstorm_cluster/jstorm-modified/memory"
+storm.messaging.intranode.base_file: "/dev/shm"
 
 ### topology.* configs are for specific executing storms
 topology.enable.message.timeouts: true

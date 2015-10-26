@@ -82,9 +82,9 @@ public class MappedBusWriter {
 	 * @throws IOException if there was an error opening the file
 	 */
 	public void open() throws IOException {
-		if (!append) {
-			new File(fileName).delete();
-		}
+//		if (!append) {
+//			new File(fileName).delete();
+//		}
 		try {
 			mem = new MemoryMappedFile(fileName, fileSize);
 		} catch(Exception e) {

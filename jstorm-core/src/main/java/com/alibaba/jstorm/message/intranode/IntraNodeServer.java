@@ -16,7 +16,7 @@ public class IntraNodeServer implements IConnection {
     private static Logger LOG = LoggerFactory.getLogger(IntraNodeServer.class);
     public static final int LONG_BYTES = 8;
     public static final int INTEGER_BYTES = 4;
-    public static final long DEFAULT_FILE_SIZE = 2000000L;
+    public static final long DEFAULT_FILE_SIZE = 200000000L;
     public static final int PACKET_SIZE = 64;
 
     // 2 Longs for uuid, 1 int for total number of packets, and 1 int for packet number
@@ -31,11 +31,12 @@ public class IntraNodeServer implements IConnection {
 
     private Thread serverThread;
 
+    int count = 0;
     public IntraNodeServer(String baseFile, String supervisorId, int taskId, long fileSize, ConcurrentHashMap<Integer, DisruptorQueue> deserializeQueues) {
         this.deserializeQueues = deserializeQueues;
         String sharedFile = baseFile + "/" + supervisorId + "_" + taskId;;
 
-        this.reader = new MappedBusReader(sharedFile, fileSize, packetSize);
+        this.reader = new MappedBusReader(sharedFile, fileSize, packetSize, true);
         try {
             reader.open();
             LOG.info("Starting intranode server: " + sharedFile);
@@ -57,7 +58,7 @@ public class IntraNodeServer implements IConnection {
                 boolean isFresh;
                 while (run) {
                     if (reader.next()) {
-                        LOG.info("Received memory message");
+                        // LOG.info("Received memory message");
                         length = reader.readBuffer(bytes, 0);
                         assert length == packetSize;
                         uuid = new UUID(buffer.getLong(0),
@@ -166,7 +167,7 @@ public class IntraNodeServer implements IConnection {
         }
 
         TaskMessage msg = new TaskMessage(task, content, new String(compId), new String(stream));
-        LOG.info("Recvd message: " + msg.task() + " " + msg.componentId() + ":" + msg.stream());
+        LOG.info("Recvd message: " + msg.task() + " " + msg.componentId() + ":" + msg.stream() + ": count: " + ++this.count);
         enqueue(msg);
     }
 

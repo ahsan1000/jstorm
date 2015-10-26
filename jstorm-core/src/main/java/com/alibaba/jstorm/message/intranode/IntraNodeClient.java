@@ -13,6 +13,7 @@ import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -231,10 +232,16 @@ public class IntraNodeClient implements IConnection {
 //            e.printStackTrace();
 //        }
         IntraNodeServer server = new IntraNodeServer(baseFile, nodeFile, 1, IntraNodeServer.DEFAULT_FILE_SIZE, new ConcurrentHashMap<Integer, DisruptorQueue>());
+
         try {
             IntraNodeClient client = new IntraNodeClient(baseFile, nodeFile, 1, IntraNodeServer.DEFAULT_FILE_SIZE, IntraNodeServer.PACKET_SIZE);
-            for (int i = 0; i < 100; i++) {
-                client.send(new TaskMessage(1, "Hello".getBytes(), "1", "2"));
+            String s = "";
+            Random random = new Random();
+            for (int i = 0; i< 50; i++) {
+                s += random.nextInt();
+            }
+            for (int i = 0; i < 1000; i++) {
+                client.send(new TaskMessage(1, s.getBytes(), "1", "2"));
             }
         } catch (IOException e) {
             e.printStackTrace();
