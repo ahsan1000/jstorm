@@ -105,7 +105,7 @@ public class MappedBusReader {
 		try {
 			mem = new MemoryMappedFile(fileName, fileSize);
 			if (clear) {
-				mem.putLongVolatile(Structure.Limit, Structure.Data);
+				mem.clearFile();
 			} else {
 				mem.compareAndSwapLong(Structure.Limit, 0, Structure.Data);
 			}

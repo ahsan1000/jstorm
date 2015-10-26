@@ -38,6 +38,12 @@ public class MemoryMappedFile {
 		}
 	}
 
+	public void clearFile(){
+		for (int i = 0; i < size; ++i){
+			putByteVolatile(i, (byte)0);
+		}
+	}
+
 	private static Method getMethod(Class<?> cls, String name, Class<?>... params) throws Exception {
 		Method m = cls.getDeclaredMethod(name, params);
 		m.setAccessible(true);
