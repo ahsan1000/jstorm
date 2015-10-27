@@ -18,6 +18,7 @@ package io.mappedbus;
 import io.mappedbus.MappedBusConstants.Commit;
 import io.mappedbus.MappedBusConstants.Length;
 import io.mappedbus.MappedBusConstants.Rollback;
+import io.mappedbus.MappedBusConstants.Read;
 import io.mappedbus.MappedBusConstants.Structure;
 
 import java.io.EOFException;
@@ -137,14 +138,17 @@ public class MappedBusReader {
 	 * @throws EOFException in case the end of the file was reached
 	 */
 	public boolean next() throws EOFException {
-		if (limit >= fileSize) {
-			throw new EOFException("End of file was reached");
+		if (limit + recordSize + Length.RecordHeader >= fileSize) {
+			// we can see the limit in case the writer has set it and now trying to set it to 0
+			limit = Structure.Data;
 		}
 		if (mem.getLongVolatile(Structure.Limit) <= limit) {
 			return false;
 		}
 		byte commit = mem.getByteVolatile(limit);
 		byte rollback = mem.getByteVolatile(limit + Length.Commit);
+		byte read = mem.getByteVolatile(limit + Length.Commit + Length.Rollback);
+
 		if (rollback == Rollback.Set) {
 			limit += Length.RecordHeader + recordSize;
 			timeoutCounter = 0;
@@ -152,6 +156,11 @@ public class MappedBusReader {
 			return false;
 		}
 		if (commit == Commit.Set) {
+			// we are not ready yet
+			// we have already seen this, no point reading again
+			if (read == Read.Set) {
+				return false;
+			}
 			timeoutCounter = 0;
 			timerStart = 0;
 			return true;
@@ -210,7 +219,10 @@ public class MappedBusReader {
 	 * @return the length of the record that was read
 	 */
 	public int readBuffer(byte[] dst, int offset) {
-		limit += Length.StatusFlags;
+		limit += Length.Commit + Length.Rollback;
+		// set the read byte
+		mem.putByteVolatile(limit, Read.Set);
+		limit += Length.Read;
 		int length = mem.getInt(limit);
 		limit += Length.Metadata;
 		mem.getBytes(limit, dst, offset, length);

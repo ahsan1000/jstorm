@@ -14,6 +14,7 @@
 * limitations under the License. 
 */
 package io.mappedbus;
+import com.alibaba.jstorm.callback.impl.ReassignTransitionCallback;
 import io.mappedbus.MappedBusConstants.Commit;
 import io.mappedbus.MappedBusConstants.Length;
 import io.mappedbus.MappedBusConstants.Structure;
@@ -60,6 +61,8 @@ public class MappedBusWriter {
 	private final int entrySize;
 
 	private final boolean append;
+
+	private long timeout = 10000;
 
 	/**
 	 * Constructs a new writer.
@@ -121,26 +124,60 @@ public class MappedBusWriter {
 	 * @param length the length of the data
 	 * @throws EOFException in case the end of the file was reached
 	 */
-	public void write(byte[] src, int offset, int length) throws EOFException {
+	public boolean write(byte[] src, int offset, int length) throws EOFException {
 		long limit = allocate();
+		long time = System.currentTimeMillis();
+		while (limit < 0) {
+			try {
+				Thread.sleep(1);
+			} catch (InterruptedException e) {
+			}
+			if (System.currentTimeMillis() - time > timeout) {
+				throw new RuntimeException("Failed to write, no space left and possibly reader not available to free space");
+			}
+			limit = allocate();
+		}
 		long commitPos = limit;
+		long readPos = commitPos + Length.Commit + Length.Rollback;
+		// when the reader reads this it should set this flag
+		// here we set it to 0
+		writeSet(readPos);
 		limit += Length.StatusFlags;
 		mem.putInt(limit, length);
 		limit += Length.Metadata;
 		mem.setBytes(limit, src, offset, length);
-		commit(commitPos);		
+		commit(commitPos);
+		return true;
 	}
 	
 	private long allocate() throws EOFException {
-		long limit = mem.getAndAddLong(Structure.Limit, entrySize);
+		long limit = mem.getLongVolatile(Structure.Limit);
 		if (limit + entrySize > fileSize) {
-			throw new EOFException("End of file was reached");
+			long lastLimit = limit - entrySize;
+			byte read = mem.getByteVolatile(lastLimit + Length.Rollback + Length.Commit);
+			// ok check weather the last thing we wrote has being read
+			if (read == MappedBusConstants.Read.NotSet) {
+				System.out.println("Failed to write last message, limit: " + limit);
+				return -1;
+			} else {
+				System.out.println("Rewind to beginning");
+				mem.putLongVolatile(Structure.Limit, Structure.Data);
+			}
+		}
+
+		limit = mem.getAndAddLong(Structure.Limit, entrySize);
+		if (limit + entrySize > fileSize) {
+			return -1;
 		}
 		return limit;
 	}
 
 	private void commit(long commitPos) {
 		mem.putByteVolatile(commitPos, Commit.Set);
+	}
+
+	private void writeSet(long readPos) {
+		mem.putByteVolatile(readPos, Commit.NotSet);
 	}
 	
 	/**

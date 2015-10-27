@@ -16,8 +16,8 @@ public class IntraNodeServer implements IConnection {
     private static Logger LOG = LoggerFactory.getLogger(IntraNodeServer.class);
     public static final int LONG_BYTES = 8;
     public static final int INTEGER_BYTES = 4;
-    public static final long DEFAULT_FILE_SIZE = 200000000L;
-    public static final int PACKET_SIZE = 64;
+    public static final long DEFAULT_FILE_SIZE = 20000L;
+    public static final int PACKET_SIZE = 1024;
 
     // 2 Longs for uuid, 1 int for total number of packets, and 1 int for packet number
     private static int metaDataExtent = 2 * LONG_BYTES + 2 * INTEGER_BYTES;
@@ -32,9 +32,9 @@ public class IntraNodeServer implements IConnection {
     private Thread serverThread;
 
     int count = 0, count2 = 0;
-    public IntraNodeServer(String baseFile, String supervisorId, int taskId, long fileSize, ConcurrentHashMap<Integer, DisruptorQueue> deserializeQueues) {
+    public IntraNodeServer(String baseFile, String supervisorId, int sourceTask, int targetTask, long fileSize, ConcurrentHashMap<Integer, DisruptorQueue> deserializeQueues) {
         this.deserializeQueues = deserializeQueues;
-        String sharedFile = baseFile + "/" + supervisorId + "_" + taskId;;
+        String sharedFile = baseFile + "/" + supervisorId + "_" + sourceTask + "_" + targetTask;;
 
         this.reader = new MappedBusReader(sharedFile, fileSize, packetSize, true);
         try {
@@ -80,10 +80,10 @@ public class IntraNodeServer implements IConnection {
                             msgs.put(uuid, packets);
                         }
                     }
-                    if (count > 900) {
-                         System.out.println("Size of in complete messages: " + msgs.size() + " count2: " + count2);
-                        Thread.sleep(100);
-                    }
+//                    if (count > 900) {
+//                         System.out.println("Size of in complete messages: " + msgs.size() + " count2: " + count2);
+//                        Thread.sleep(100);
+//                    }
                 }
                 LOG.info("Intranode server shutdown....");
             } catch (Exception e) {

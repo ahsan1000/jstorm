@@ -36,12 +36,14 @@ class MappedBusConstants {
 		public static final int Commit = 1;
 		
 		public static final int Rollback = 1;
+
+		public static final int Read = 1;
 		
 		public static final int Metadata = 4;
 		
-		public static final int StatusFlags = Commit + Rollback;
+		public static final int StatusFlags = Commit + Rollback + Read;
 
-		public static final int RecordHeader = Commit + Rollback + Metadata;
+		public static final int RecordHeader = Commit + Rollback +Read +  Metadata;
 
 	}
 
@@ -59,5 +61,13 @@ class MappedBusConstants {
 		
 		public static final byte Set = 1;
 		
+	}
+
+	static class Read {
+
+		public static final byte NotSet = 0;
+
+		public static final byte Set = 1;
+
 	}
 }

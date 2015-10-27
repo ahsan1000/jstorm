@@ -32,7 +32,7 @@ public class IntraNodeClient implements IConnection {
     private byte[] packetBytes;
     private String sharedFile;
 
-    public IntraNodeClient(String baseFile, String supervisorId, int taskId, long fileSize, int packetSize)
+    public IntraNodeClient(String baseFile, String supervisorId, int targetTaskId, int sourceTaskId, long fileSize, int packetSize)
         throws IOException {
         if (packetSize < metaDataExtent+constMsgExtent){
             throw new RuntimeException("Packet size (" + packetSize + ") should be greater or equal to " + (metaDataExtent+constMsgExtent) + "");
@@ -42,7 +42,7 @@ public class IntraNodeClient implements IConnection {
 
         packetBytes = new byte[packetSize];
         this.packet = ByteBuffer.wrap(packetBytes);
-        sharedFile = baseFile + "/" + supervisorId + "_" + taskId;
+        sharedFile = baseFile + "/" + supervisorId + "_" +  targetTaskId + "_" + sourceTaskId;
         LOG.info("Starting intrannode clien on: " + sharedFile);
         writer = new MappedBusWriter(sharedFile, fileSize, packetSize, false);
         writer.open();
@@ -168,9 +168,9 @@ public class IntraNodeClient implements IConnection {
         }
         packetCount++;
         writer.write(packetBytes, 0, packetSize);
-        if (packetCount != 2) {
-            System.out.println("*************************************************************************************************");
-        }
+//        if (packetCount != 2) {
+//            System.out.println("*************************************************************************************************");
+//        }
         totalPacketCount += packetCount;
 
     }
@@ -238,18 +238,27 @@ public class IntraNodeClient implements IConnection {
 //        catch (IOException e) {
 //            e.printStackTrace();
 //        }
-        IntraNodeServer server = new IntraNodeServer(baseFile, nodeFile, 1, IntraNodeServer.DEFAULT_FILE_SIZE, new ConcurrentHashMap<Integer, DisruptorQueue>());
+        IntraNodeServer server = new IntraNodeServer(baseFile, nodeFile, 1, 1, IntraNodeServer.DEFAULT_FILE_SIZE, new ConcurrentHashMap<Integer, DisruptorQueue>());
 
         try {
-            IntraNodeClient client = new IntraNodeClient(baseFile, nodeFile, 1, IntraNodeServer.DEFAULT_FILE_SIZE, IntraNodeServer.PACKET_SIZE);
+            final IntraNodeClient client = new IntraNodeClient(baseFile, nodeFile, 1, 1, IntraNodeServer.DEFAULT_FILE_SIZE, IntraNodeServer.PACKET_SIZE);
             String s = "adadadadfsdf0000000000000000000000008866660000000ad";
             Random random = new Random();
             for (int i = 0; i< 1; i++) {
                 int z = (int) random.nextDouble();
                 s += z;
             }
-            for (int i = 0; i < 1000; i++) {
-                client.send(new TaskMessage(1, s.getBytes(), "1", ""+i));
+            for (int j = 0; j < 10; j++) {
+                final String finalS = s;
+                Thread t = new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        for (int i = 0; i < 1000; i++) {
+                            client.send(new TaskMessage(1, finalS.getBytes(), "1", "" + i));
+                        }
+                    }
+                });
+                t.start();
             }
             System.out.println("******************************************   total packet count: " + client.totalPacketCount);
         } catch (IOException e) {
