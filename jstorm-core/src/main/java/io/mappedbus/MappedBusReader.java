@@ -20,6 +20,8 @@ import io.mappedbus.MappedBusConstants.Length;
 import io.mappedbus.MappedBusConstants.Rollback;
 import io.mappedbus.MappedBusConstants.Read;
 import io.mappedbus.MappedBusConstants.Structure;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.EOFException;
 import java.io.IOException;
@@ -59,6 +61,7 @@ import java.io.IOException;
  * </pre>
  */
 public class MappedBusReader {
+	private static Logger LOG = LoggerFactory.getLogger(MappedBusReader.class);
 
 	protected static final long MAX_TIMEOUT_COUNT = 100;
 

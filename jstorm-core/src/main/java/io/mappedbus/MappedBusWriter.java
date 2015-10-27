@@ -14,13 +14,13 @@
 * limitations under the License. 
 */
 package io.mappedbus;
-import com.alibaba.jstorm.callback.impl.ReassignTransitionCallback;
 import io.mappedbus.MappedBusConstants.Commit;
 import io.mappedbus.MappedBusConstants.Length;
 import io.mappedbus.MappedBusConstants.Structure;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.EOFException;
-import java.io.File;
 import java.io.IOException;
 
 /**
@@ -51,6 +51,7 @@ import java.io.IOException;
  * </pre>
  */
 public class MappedBusWriter {
+	private static Logger LOG = LoggerFactory.getLogger(MappedBusWriter.class);
 
 	private MemoryMappedFile mem;
 	
@@ -157,10 +158,10 @@ public class MappedBusWriter {
 			byte read = mem.getByteVolatile(lastLimit + Length.Rollback + Length.Commit);
 			// ok check weather the last thing we wrote has being read
 			if (read == MappedBusConstants.Read.NotSet) {
-				System.out.println("Failed to write last message, limit: " + limit);
+				LOG.error("Failed to write last message, limit: " + limit);
 				return -1;
 			} else {
-				System.out.println("Rewind to beginning");
+				LOG.info("Rewind to beginning");
 				mem.putLongVolatile(Structure.Limit, Structure.Data);
 			}
 		}
