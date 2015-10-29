@@ -49,7 +49,7 @@ public class IntraNodeClient implements IConnection {
     }
     int totalPacketCount = 0;
     private void write(TaskMessage msg) throws EOFException {
-        LOG.info("Writing message: " + msg.task() + " " + msg.componentId() + ":" + msg.stream() + " to: " + sharedFile);
+        LOG.info("Writing message: " + msg.task() + " " + msg.sourceTask() + ":" + msg.stream() + " to: " + sharedFile);
         UUID uuid = UUID.randomUUID();
         byte[] content = msg.message();
         // extent is metadata + msg
@@ -68,7 +68,7 @@ public class IntraNodeClient implements IConnection {
 
         final int
             compIdLength =
-            msg.componentId()
+                (msg.sourceTask() + "")
                 .length();
         final int
             streamLength =
@@ -121,7 +121,7 @@ public class IntraNodeClient implements IConnection {
 
         final byte[]
             compIdBytes =
-            msg.componentId()
+                (msg.sourceTask() + "")
                 .getBytes();
         count = 0;
         while (count < compIdLength) {
@@ -248,13 +248,13 @@ public class IntraNodeClient implements IConnection {
                 int z = (int) random.nextDouble();
                 s += z;
             }
-            for (int j = 0; j < 10; j++) {
+            for (int j = 0; j < 1; j++) {
                 final String finalS = s;
                 Thread t = new Thread(new Runnable() {
                     @Override
                     public void run() {
-                        for (int i = 0; i < 1000; i++) {
-                            client.send(new TaskMessage(1, finalS.getBytes(), "1", "" + i));
+                        for (int i = 0; i < 1000000; i++) {
+                            client.send(new TaskMessage(1, finalS.getBytes(), 1, "" + i));
                         }
                     }
                 });

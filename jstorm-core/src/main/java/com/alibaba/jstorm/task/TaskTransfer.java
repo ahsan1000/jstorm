@@ -73,6 +73,7 @@ public class TaskTransfer {
     protected DisruptorQueue transferQueue;
     protected KryoTupleSerializer serializer;
     protected Map<Integer, DisruptorQueue> innerTaskTransfer;
+    protected ConcurrentHashMap<Integer, IConnection> intraNodeConnections;
     protected DisruptorQueue serializeQueue;
     protected final AsyncLoopThread serializeThread;
     protected volatile TaskStatus taskStatus;
@@ -97,6 +98,7 @@ public class TaskTransfer {
         this.storm_conf = workerData.getStormConf();
         this.transferQueue = workerData.getTransferQueue();
         this.innerTaskTransfer = workerData.getInnerTaskTransfer();
+        this.intraNodeConnections = workerData.getIntraNodeConnections();
         this.taskId = thisTaskId;
         
         this.nodeportSocket = workerData.getNodeportSocket();
@@ -302,15 +304,22 @@ public class TaskTransfer {
 
     protected IConnection getConnection(int taskId) {
         IConnection conn = null;
+        WorkerSlot thisNodePort = taskNodeport.get(this.taskId);
         WorkerSlot nodePort = taskNodeport.get(taskId);
         if (nodePort == null) {
             String errormsg = "can`t not found IConnection to " + taskId;
             LOG.warn("Intra transfer warn", new Exception(errormsg));
         } else {
-            conn = nodeportSocket.get(nodePort);
+            // LOG.info("***********" + thisNodePort.getNodeId() + ":" + nodePort.getNodeId());
+            if (thisNodePort.getNodeId().equals(nodePort.getNodeId())) {
+                conn = intraNodeConnections.get(nodePort.getPort());
+            }
             if (conn == null) {
-                String errormsg = "can`t not found nodePort " + nodePort;
-                LOG.warn("Intra transfer warn", new Exception(errormsg));
+                conn = nodeportSocket.get(nodePort);
+                if (conn == null) {
+                    String errormsg = "can`t not found nodePort " + nodePort;
+                    LOG.warn("Intra transfer warn", new Exception(errormsg));
+                }
             }
         }
         return conn;

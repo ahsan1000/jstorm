@@ -16,7 +16,7 @@ public class IntraNodeServer implements IConnection {
     private static Logger LOG = LoggerFactory.getLogger(IntraNodeServer.class);
     public static final int LONG_BYTES = 8;
     public static final int INTEGER_BYTES = 4;
-    public static final long DEFAULT_FILE_SIZE = 20000000L;
+    public static final long DEFAULT_FILE_SIZE = 200000L;
     public static final int PACKET_SIZE = 1024;
 
     // 2 Longs for uuid, 1 int for total number of packets, and 1 int for packet number
@@ -171,8 +171,8 @@ public class IntraNodeServer implements IConnection {
             offset+=willRead;
         }
 
-        TaskMessage msg = new TaskMessage(task, content, new String(compId), new String(stream));
-        LOG.info("Recvd message: " + msg.task() + " " + msg.componentId() + ":" + msg.stream() + ": count: " + ++this.count);
+        TaskMessage msg = new TaskMessage(task, content, Integer.parseInt(new String(compId)), new String(stream));
+        LOG.info("Recvd message: " + msg.task() + " " + Integer.parseInt(new String(compId)) + ":" + msg.stream() + ": count: " + ++this.count);
         enqueue(msg);
     }
 
