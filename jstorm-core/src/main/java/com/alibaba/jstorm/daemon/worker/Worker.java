@@ -30,6 +30,8 @@ import java.util.Map;
 import java.util.Set;
 
 import backtype.storm.generated.GlobalStreamId;
+import com.alibaba.jstorm.message.intranode.IntraNodeServer;
+import com.alibaba.jstorm.schedule.default_assign.ResourceWorkerSlot;
 import com.alibaba.jstorm.utils.*;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
@@ -47,7 +49,6 @@ import backtype.storm.utils.Utils;
 import com.alibaba.jstorm.callback.AsyncLoopThread;
 import com.alibaba.jstorm.callback.RunnableCallback;
 import com.alibaba.jstorm.client.ConfigExtension;
-import com.alibaba.jstorm.cluster.Common;
 import com.alibaba.jstorm.cluster.StormConfig;
 import com.alibaba.jstorm.daemon.worker.hearbeat.SyncContainerHb;
 import com.alibaba.jstorm.daemon.worker.hearbeat.WorkerHeartbeatRunable;
@@ -57,7 +58,6 @@ import com.alibaba.jstorm.task.TaskShutdownDameon;
 import com.alibaba.jstorm.task.heartbeat.TaskHeartbeatRunable;
 import com.lmax.disruptor.WaitStrategy;
 import com.lmax.disruptor.dsl.ProducerType;
-import storm.trident.graph.Group;
 
 /**
  * worker entrance
@@ -188,7 +188,23 @@ public class Worker {
 
         IConnection recvConnection =
                 context.bind(topologyId, workerData.getPort(), workerData.getDeserializeQueues());
-        
+        String baseFile = (String) workerData.getConf().get(Config.STORM_MESSAGING_INTRANODE_BASE_FILE);
+        Set<ResourceWorkerSlot> workerSlots = workerData.getWorkerToResource();
+        Set<Integer> thisPorts = new HashSet<Integer>();
+        for (ResourceWorkerSlot resourceWorkerSlot : workerSlots) {
+            if (resourceWorkerSlot.getNodeId().equals(workerData.getSupervisorId())) {
+                thisPorts.add(resourceWorkerSlot.getPort());
+            }
+        }
+
+        for (Integer port : thisPorts) {
+            if (!port.equals(workerData.getPort())) {
+                IConnection intraNodeServer = new IntraNodeServer(baseFile, workerData.getSupervisorId(), workerData.getPort(), port,
+                        IntraNodeServer.DEFAULT_FILE_SIZE, workerData.getDeserializeQueues());
+                workerData.setIntraNodeServer(intraNodeServer);
+            }
+        }
+
         workerData.setRecvConnection(recvConnection);
     }
 

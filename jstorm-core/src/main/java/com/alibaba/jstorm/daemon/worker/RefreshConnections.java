@@ -26,6 +26,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import com.alibaba.jstorm.message.intranode.IntraNodeClient;
+import com.alibaba.jstorm.message.intranode.IntraNodeServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -84,6 +86,12 @@ public class RefreshConnections extends RunnableCallback {
 
     private int taskTimeoutSecs;
 
+    /**
+     * Intra node communication using memory mapped files. We create a connection for
+     * every worker in the same node.
+     */
+    private ConcurrentHashMap<Integer, IConnection> intraNodeConnections;
+
     // private ReentrantReadWriteLock endpoint_socket_lock;
 
     @SuppressWarnings("rawtypes")
@@ -99,6 +107,7 @@ public class RefreshConnections extends RunnableCallback {
         this.nodeportSocket = workerData.getNodeportSocket();
         this.context = workerData.getContext();
         this.taskNodeport = workerData.getTaskNodeport();
+        this.intraNodeConnections = workerData.getIntraNodeConnections();
         this.supervisorId = workerData.getSupervisorId();
 
         // this.endpoint_socket_lock = endpoint_socket_lock;
@@ -218,6 +227,7 @@ public class RefreshConnections extends RunnableCallback {
 
                 // only reserve outboundTasks
                 Set<WorkerSlot> need_connections = new HashSet<WorkerSlot>();
+                Set<WorkerSlot> need_intra_connection = new HashSet<WorkerSlot>();
 
                 Set<Integer> localTasks = new HashSet<Integer>();
 
@@ -227,6 +237,9 @@ public class RefreshConnections extends RunnableCallback {
                                 && worker.getPort() == workerData.getPort()) {
                             localTasks.addAll(worker.getTasks());
                             need_connections.add(worker);
+                        }
+                        if (supervisorId.equals(worker.getNodeId())) {
+                            need_intra_connection.add(worker);
                         }
                         for (Integer id : worker.getTasks()) {
                             if (outboundTasks.contains(id)) {
@@ -258,6 +271,38 @@ public class RefreshConnections extends RunnableCallback {
                     if (!need_connections.contains(node_port)) {
                         remove_connections.add(node_port);
                     }
+                }
+
+                Set<Integer> intranode_current_connections = intraNodeConnections.keySet();
+                Set<Integer> intranode_new_connections = new HashSet<Integer>();
+                Set<Integer> intranode_remove_connections = new HashSet<Integer>();
+
+                //LOG.info("Need intra connections:" + need_intra_connection.size());
+                for (WorkerSlot worker : need_intra_connection) {
+                    int node_port = worker.getPort();
+                    if (!intranode_current_connections.contains(node_port)) {
+//                        LOG.info("Creating intranode client: " + workerData.getSupervisorId() + ":" + node_port);
+                        intranode_new_connections.add(node_port);
+                    } /*else {
+                        //LOG.info("Found intra connections:" + node_port);
+                    }*/
+                }
+
+                for (Integer node_port : intranode_current_connections) {
+                    WorkerSlot slot = new WorkerSlot(workerData.getSupervisorId(), node_port);
+                    if (!need_intra_connection.contains(slot)) {
+                        intranode_remove_connections.add(node_port);
+                    }
+                }
+
+                String baseFile = (String) conf.get(Config.STORM_MESSAGING_INTRANODE_BASE_FILE);
+                // TODO: Remvoe connectiuons
+                for (Integer intra_port : intranode_new_connections) {
+                    //LOG.info("Creating intranode client: " + workerData.getSupervisorId() + ":" + intra_port);
+                    // TODO: pass worker id
+                    IConnection connection = new IntraNodeClient(baseFile, workerData.getSupervisorId(), intra_port, workerData.getPort(),
+                            IntraNodeServer.DEFAULT_FILE_SIZE, IntraNodeServer.PACKET_SIZE);
+                    intraNodeConnections.put(intra_port, connection);
                 }
 
                 // create new connection

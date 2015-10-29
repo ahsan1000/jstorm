@@ -105,6 +105,9 @@ public class WorkerData {
 
     // connection to other workers <NodePort, ZMQConnection>
     private ConcurrentHashMap<WorkerSlot, IConnection> nodeportSocket;
+
+    // intra node connections using memory mapped files to workers in same node
+    private ConcurrentHashMap<Integer, IConnection> intraNodeConnections;
     // <taskId, NodePort>
     private ConcurrentHashMap<Integer, WorkerSlot> taskNodeport;
 
@@ -156,6 +159,9 @@ public class WorkerData {
     private volatile AssignmentType assignmentType;
     
     private IConnection recvConnection;
+
+    /** This is the intranode server */
+    private IConnection intraNodeServer;
 
     @SuppressWarnings({ "rawtypes", "unchecked" })
     public WorkerData(Map conf, IContext context, String topology_id,
@@ -261,6 +267,8 @@ public class WorkerData {
         this.sendingQueue.consumerStarted();
 
         this.nodeportSocket = new ConcurrentHashMap<WorkerSlot, IConnection>();
+        this.intraNodeConnections = new ConcurrentHashMap<Integer, IConnection>();
+
         this.taskNodeport = new ConcurrentHashMap<Integer, WorkerSlot>();
         this.workerToResource = new ConcurrentSkipListSet<ResourceWorkerSlot>();
         this.innerTaskTransfer =
@@ -389,6 +397,10 @@ public class WorkerData {
 
     public ConcurrentHashMap<WorkerSlot, IConnection> getNodeportSocket() {
         return nodeportSocket;
+    }
+
+    public ConcurrentHashMap<Integer, IConnection> getIntraNodeConnections() {
+        return intraNodeConnections;
     }
 
     public ConcurrentHashMap<Integer, WorkerSlot> getTaskNodeport() {
@@ -612,4 +624,11 @@ public class WorkerData {
 		this.recvConnection = recvConnection;
 	}
 
+    public IConnection getIntraNodeServer() {
+        return intraNodeServer;
+    }
+
+    public void setIntraNodeServer(IConnection intraNodeServer) {
+        this.intraNodeServer = intraNodeServer;
+    }
 }

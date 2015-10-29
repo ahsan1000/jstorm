@@ -223,6 +223,9 @@ storm.messaging.netty.authentication: false
 # default number of seconds group mapping service will cache user group
 storm.group.mapping.service.cache.duration.secs: 120
 
+# Intranode communications
+storm.messaging.intranode.base_file: "/dev/shm"
+
 ### topology.* configs are for specific executing storms
 topology.enable.message.timeouts: true
 topology.debug: false
