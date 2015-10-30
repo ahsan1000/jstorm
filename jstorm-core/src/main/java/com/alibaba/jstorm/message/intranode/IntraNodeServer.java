@@ -16,7 +16,7 @@ public class IntraNodeServer implements IConnection {
     private static Logger LOG = LoggerFactory.getLogger(IntraNodeServer.class);
     public static final int LONG_BYTES = 8;
     public static final int INTEGER_BYTES = 4;
-    public static final long DEFAULT_FILE_SIZE = 200000L;
+    public static final long DEFAULT_FILE_SIZE = 20000000L;
     public static final int PACKET_SIZE = 1024;
 
     // 2 Longs for uuid, 1 int for total number of packets, and 1 int for packet number
@@ -32,9 +32,10 @@ public class IntraNodeServer implements IConnection {
     private Thread serverThread;
 
     int count = 0, count2 = 0;
+    String sharedFile;
     public IntraNodeServer(String baseFile, String supervisorId, int sourceTask, int targetTask, long fileSize, ConcurrentHashMap<Integer, DisruptorQueue> deserializeQueues) {
         this.deserializeQueues = deserializeQueues;
-        String sharedFile = baseFile + "/" + supervisorId + "_" + sourceTask + "_" + targetTask;;
+        sharedFile = baseFile + "/" + supervisorId + "_" + sourceTask + "_" + targetTask;;
 
         this.reader = new MappedBusReader(sharedFile, fileSize, packetSize, true);
         try {
@@ -58,7 +59,6 @@ public class IntraNodeServer implements IConnection {
                 boolean isFresh;
                 while (run) {
                     if (reader.next()) {
-                        // LOG.info("Received memory message");
                         length = reader.readBuffer(bytes, 0);
                         assert length == packetSize;
                         uuid = new UUID(buffer.getLong(0),
@@ -72,6 +72,7 @@ public class IntraNodeServer implements IConnection {
                                     bytes.length)));
 
                         count2++;
+                        LOG.info("Received memory message with packets {}, to worker {}", totalPackets, sharedFile);
                         if (packets.size() == totalPackets){
                             createMsg(isFresh ? packets : msgs.remove(uuid));
                             continue;
@@ -79,15 +80,18 @@ public class IntraNodeServer implements IConnection {
                         if (isFresh){
                             msgs.put(uuid, packets);
                         }
+                    } else {
+//                        LOG.info("Next false: {}", sharedFile);
                     }
 //                    if (count > 900) {
 //                         System.out.println("Size of in complete messages: " + msgs.size() + " count2: " + count2);
 //                        Thread.sleep(100);
 //                    }
+
                 }
                 LOG.info("Intranode server shutdown....");
-            } catch (Exception e) {
-                throw new RuntimeException(e);
+            } catch (Throwable e) {
+                LOG.error("Error occurred", e);
             }
         }
     }
@@ -172,7 +176,12 @@ public class IntraNodeServer implements IConnection {
         }
 
         TaskMessage msg = new TaskMessage(task, content, Integer.parseInt(new String(compId)), new String(stream));
-        LOG.info("Recvd message: " + msg.task() + " " + Integer.parseInt(new String(compId)) + ":" + msg.stream() + ": count: " + ++this.count);
+        String stream1 = msg.stream();
+//        int streamNo = Integer.parseInt(stream1);
+//        if (streamNo != this.count) {
+//            LOG.error("{} != {} **************************************************************************************************************************", streamNo, this.count);
+//        }
+        LOG.info("Recvd message: " + msg.task() + " " + Integer.parseInt(new String(compId)) + ":" + stream1 + ": count: " + ++this.count);
         enqueue(msg);
     }
 
@@ -229,6 +238,19 @@ public class IntraNodeServer implements IConnection {
     @Override
     public boolean isClosed() {
         return false;
+    }
+
+    public static void main(String[] args) {
+        String baseFile = "/dev/shm";
+//        String baseFile = "";
+        String nodeFile = "ec10a060-7950-440b-88f0-d09baf3bc863";
+//        try {
+//            Files.deleteIfExists(Paths.get(baseFile + "/" + nodeFile + "_" + 1));
+//        }
+//        catch (IOException e) {
+//            e.printStackTrace();
+//        }
+        IntraNodeServer server = new IntraNodeServer(baseFile, nodeFile, 6801, 6802, IntraNodeServer.DEFAULT_FILE_SIZE, new ConcurrentHashMap<Integer, DisruptorQueue>());
     }
 }
 

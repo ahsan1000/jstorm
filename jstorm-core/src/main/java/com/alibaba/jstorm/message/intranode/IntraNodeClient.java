@@ -48,8 +48,8 @@ public class IntraNodeClient implements IConnection {
         writer.open();
     }
     int totalPacketCount = 0;
-    private void write(TaskMessage msg) throws EOFException {
-        LOG.info("Writing message: " + msg.task() + " " + msg.sourceTask() + ":" + msg.stream() + " to: " + sharedFile);
+    private synchronized void write(TaskMessage msg) throws EOFException {
+        //LOG.info("Writing message: " + msg.task() + " " + msg.sourceTask() + ":" + msg.stream() + " to: " + sharedFile);
         UUID uuid = UUID.randomUUID();
         byte[] content = msg.message();
         // extent is metadata + msg
@@ -172,6 +172,7 @@ public class IntraNodeClient implements IConnection {
 //            System.out.println("*************************************************************************************************");
 //        }
         totalPacketCount += packetCount;
+        LOG.info("Writing message: " + msg.task() + " " + msg.sourceTask() + ":" + msg.stream() + " with packets:" + numPackets +" to: " + sharedFile);
 
     }
 
@@ -198,8 +199,10 @@ public class IntraNodeClient implements IConnection {
         for (TaskMessage taskMessage : messages) {
             try {
                 write(taskMessage);
-            } catch (EOFException e) {
-                throw new RuntimeException("Faile to send message", e);
+            } catch (Throwable e) {
+                String message = "Faild to send message";
+                LOG.error(message);
+                throw new RuntimeException(message, e);
             }
         }
     }
@@ -208,8 +211,10 @@ public class IntraNodeClient implements IConnection {
     public void send(TaskMessage message) {
         try {
             write(message);
-        } catch (EOFException e) {
-            throw new RuntimeException("Failed to send message", e);
+        } catch (Throwable e) {
+            String msg = "Faild to send message";
+            LOG.error(msg);
+            throw new RuntimeException(msg, e);
         }
     }
 
@@ -238,16 +243,14 @@ public class IntraNodeClient implements IConnection {
 //        catch (IOException e) {
 //            e.printStackTrace();
 //        }
-        IntraNodeServer server = new IntraNodeServer(baseFile, nodeFile, 1, 1, IntraNodeServer.DEFAULT_FILE_SIZE, new ConcurrentHashMap<Integer, DisruptorQueue>());
+//        IntraNodeServer server = new IntraNodeServer(baseFile, nodeFile, 1, 1, IntraNodeServer.DEFAULT_FILE_SIZE, new ConcurrentHashMap<Integer, DisruptorQueue>());
 
         try {
             final IntraNodeClient client = new IntraNodeClient(baseFile, nodeFile, 1, 1, IntraNodeServer.DEFAULT_FILE_SIZE, IntraNodeServer.PACKET_SIZE);
-            String s = "adadadadfsdf0000000000000000000000008866660000000ad";
+            String s = "1";
             Random random = new Random();
-            for (int i = 0; i< 1; i++) {
-                int z = (int) random.nextDouble();
-                s += z;
-            }
+            byte b[] = new byte[1000];
+            random.nextBytes(b);
             for (int j = 0; j < 1; j++) {
                 final String finalS = s;
                 Thread t = new Thread(new Runnable() {

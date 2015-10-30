@@ -145,7 +145,9 @@ public class MappedBusReader {
 			// we can see the limit in case the writer has set it and now trying to set it to 0
 			limit = Structure.Data;
 		}
-		if (mem.getLongVolatile(Structure.Limit) <= limit) {
+		long longVolatile = mem.getLongVolatile(Structure.Limit);
+		if (longVolatile <= limit) {
+//			LOG.info("LIMIT: {}", limit);
 			return false;
 		}
 		byte commit = mem.getByteVolatile(limit);
@@ -153,15 +155,18 @@ public class MappedBusReader {
 		byte read = mem.getByteVolatile(limit + Length.Commit + Length.Rollback);
 
 		if (rollback == Rollback.Set) {
+			LOG.info("Rollback set");
 			limit += Length.RecordHeader + recordSize;
 			timeoutCounter = 0;
 			timerStart = 0;
 			return false;
 		}
 		if (commit == Commit.Set) {
+			LOG.info("Commit set");
 			// we are not ready yet
 			// we have already seen this, no point reading again
 			if (read == Read.Set) {
+				LOG.info("Read not set");
 				return false;
 			}
 			timeoutCounter = 0;

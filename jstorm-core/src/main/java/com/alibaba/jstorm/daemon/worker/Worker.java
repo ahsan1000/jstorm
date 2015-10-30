@@ -30,7 +30,9 @@ import java.util.Map;
 import java.util.Set;
 
 import backtype.storm.generated.GlobalStreamId;
+import com.alibaba.jstorm.cluster.StormClusterState;
 import com.alibaba.jstorm.message.intranode.IntraNodeServer;
+import com.alibaba.jstorm.schedule.Assignment;
 import com.alibaba.jstorm.schedule.default_assign.ResourceWorkerSlot;
 import com.alibaba.jstorm.utils.*;
 import org.apache.commons.lang.StringUtils;
@@ -189,7 +191,23 @@ public class Worker {
         IConnection recvConnection =
                 context.bind(topologyId, workerData.getPort(), workerData.getDeserializeQueues());
         String baseFile = (String) workerData.getConf().get(Config.STORM_MESSAGING_INTRANODE_BASE_FILE);
-        Set<ResourceWorkerSlot> workerSlots = workerData.getWorkerToResource();
+        StormClusterState zkCluster =  workerData.getZkCluster();
+        Assignment assignment = null;
+        try {
+            assignment = zkCluster.assignment_info(topologyId, null);
+        } catch (Exception e) {
+            String errMsg = "Failed to get Assignment of " + topologyId;
+            LOG.error(errMsg);
+            return;
+        }
+
+        Set<ResourceWorkerSlot> workerSlots = assignment.getWorkers();
+        if (workerSlots == null) {
+            String errMsg = "Failed to get taskToResource of "
+                    + topologyId;
+            LOG.error(errMsg);
+            return;
+        }
         Set<Integer> thisPorts = new HashSet<Integer>();
         for (ResourceWorkerSlot resourceWorkerSlot : workerSlots) {
             if (resourceWorkerSlot.getNodeId().equals(workerData.getSupervisorId())) {
