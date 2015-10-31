@@ -300,8 +300,8 @@ public class RefreshConnections extends RunnableCallback {
                 for (Integer intra_port : intranode_new_connections) {
                     //LOG.info("Creating intranode client: " + workerData.getSupervisorId() + ":" + intra_port);
                     // TODO: pass worker id
-                    IConnection connection = new IntraNodeClient(baseFile, workerData.getSupervisorId(), intra_port, workerData.getPort(),
-                            IntraNodeServer.DEFAULT_FILE_SIZE, IntraNodeServer.PACKET_SIZE);
+                    IConnection connection = new IntraNodeClient(baseFile, workerData.getSupervisorId(), intra_port,
+                            workerData.getPort(), IntraNodeServer.PACKET_SIZE);
                     intraNodeConnections.put(intra_port, connection);
                 }
 

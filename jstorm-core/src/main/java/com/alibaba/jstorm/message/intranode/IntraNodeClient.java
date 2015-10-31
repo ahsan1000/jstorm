@@ -3,15 +3,16 @@ package com.alibaba.jstorm.message.intranode;
 import backtype.storm.messaging.IConnection;
 import backtype.storm.messaging.TaskMessage;
 import backtype.storm.utils.DisruptorQueue;
-import io.mappedbus.MappedBusWriter;
+import net.openhft.chronicle.Chronicle;
+import net.openhft.chronicle.ChronicleQueueBuilder;
+import net.openhft.chronicle.ExcerptAppender;
+import net.openhft.chronicle.VanillaChronicle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.List;
 import java.util.Random;
 import java.util.UUID;
@@ -21,33 +22,41 @@ public class IntraNodeClient implements IConnection {
     private static Logger LOG = LoggerFactory.getLogger(IntraNodeServer.class);
     public static final int LONG_BYTES = 8;
     public static final int INTEGER_BYTES = 4;
-    // 2 Longs for uuid, 1 int for total number of packets, and 1 int for packet number
-    private static int metaDataExtent = 2*LONG_BYTES + 2*INTEGER_BYTES;
     // 1 int for task#, 1 int for content.length, 1 int for componentID.length, 1 int for stream.length
     private static int constMsgExtent = 4*INTEGER_BYTES;
     private final int packetSize;
     private final int packetDataSize;
-    private MappedBusWriter writer;
     private ByteBuffer packet;
     private byte[] packetBytes;
     private String sharedFile;
+    int totalPacketCount = 0;
 
-    public IntraNodeClient(String baseFile, String supervisorId, int targetTaskId, int sourceTaskId, long fileSize, int packetSize)
-        throws IOException {
-        if (packetSize < metaDataExtent+constMsgExtent){
-            throw new RuntimeException("Packet size (" + packetSize + ") should be greater or equal to " + (metaDataExtent+constMsgExtent) + "");
+    private ExcerptAppender writer;
+
+    public IntraNodeClient(String baseFile, String supervisorId, int targetTaskId, int sourceTaskId, int packetSize) {
+        int metaDataExtent = 2 * LONG_BYTES + 2 * INTEGER_BYTES;
+        if (packetSize < metaDataExtent +constMsgExtent){
+            throw new RuntimeException("Packet size (" + packetSize + ") should be greater or equal to " + (metaDataExtent +constMsgExtent) + "");
         }
         this.packetSize = packetSize;
         this.packetDataSize = packetSize - metaDataExtent;
 
         packetBytes = new byte[packetSize];
         this.packet = ByteBuffer.wrap(packetBytes);
-        sharedFile = baseFile + "/" + supervisorId + "_" +  targetTaskId + "_" + sourceTaskId;
-        LOG.info("Starting intrannode clien on: " + sharedFile);
-        writer = new MappedBusWriter(sharedFile, fileSize, packetSize, false);
-        writer.open();
+        sharedFile = baseFile + "/" + supervisorId + "_" +  targetTaskId;
+
+        try {
+            Chronicle outbound = ChronicleQueueBuilder
+                    .vanilla(sharedFile).entriesPerCycle(2 << 24).cycle(VanillaChronicle.Cycle.SECONDS).cycleLength(3600000)
+                    .build();
+            writer = outbound.createAppender();
+        } catch (IOException e) {
+            String s = "Failed to create the memory mapped queue";
+            LOG.error(s, e);
+            throw new RuntimeException(s, e);
+        }
     }
-    int totalPacketCount = 0;
+
     private synchronized void write(TaskMessage msg) throws EOFException {
         //LOG.info("Writing message: " + msg.task() + " " + msg.sourceTask() + ":" + msg.stream() + " to: " + sharedFile);
         UUID uuid = UUID.randomUUID();
@@ -67,13 +76,13 @@ public class IntraNodeClient implements IConnection {
         // msg.stream.lenght bytes
 
         final int
-            compIdLength =
+                compIdLength =
                 (msg.sourceTask() + "")
-                .length();
+                        .length();
         final int
-            streamLength =
-            msg.stream()
-                .length();
+                streamLength =
+                msg.stream()
+                        .length();
         int msgExtent = constMsgExtent + content.length + compIdLength + streamLength;
 
         int  numPackets = msgExtent / packetDataSize;
@@ -105,7 +114,7 @@ public class IntraNodeClient implements IConnection {
             int remainingCapacity = packetSize - offset;
             if (remainingCapacity == 0){
                 packetCount++;
-                writer.write(packetBytes, 0, packetSize);
+                write(packetBytes);
                 ++packetNumber;
                 remainingCapacity = packetDataSize;
                 offset = 2*LONG_BYTES+INTEGER_BYTES;
@@ -119,17 +128,14 @@ public class IntraNodeClient implements IConnection {
             offset+=willWrite;
         }
 
-        final byte[]
-            compIdBytes =
-                (msg.sourceTask() + "")
-                .getBytes();
+        final byte[] compIdBytes = (msg.sourceTask() + "").getBytes();
         count = 0;
         while (count < compIdLength) {
             int remainingToWrite = compIdLength - count;
             int remainingCapacity = packetSize - offset;
             if (remainingCapacity == 0){
                 packetCount++;
-                writer.write(packetBytes, 0, packetSize);
+                write(packetBytes);
                 ++packetNumber;
                 remainingCapacity = packetDataSize;
                 offset = 2*LONG_BYTES+INTEGER_BYTES;
@@ -143,17 +149,14 @@ public class IntraNodeClient implements IConnection {
             offset+=willWrite;
         }
 
-        final byte[]
-            streamBytes =
-            msg.stream()
-                .getBytes();
+        final byte[] streamBytes = msg.stream().getBytes();
         count = 0;
         while (count < streamLength) {
             int remainingToWrite = streamLength - count;
             int remainingCapacity = packetSize - offset;
             if (remainingCapacity == 0){
                 packetCount++;
-                writer.write(packetBytes, 0, packetSize);
+                write(packetBytes);
                 ++packetNumber;
                 remainingCapacity = packetDataSize;
                 offset = 2*LONG_BYTES+INTEGER_BYTES;
@@ -167,14 +170,18 @@ public class IntraNodeClient implements IConnection {
             offset+=willWrite;
         }
         packetCount++;
-        writer.write(packetBytes, 0, packetSize);
-//        if (packetCount != 2) {
-//            System.out.println("*************************************************************************************************");
-//        }
+        write(packetBytes);
         totalPacketCount += packetCount;
         LOG.info("Writing message: " + msg.task() + " " + msg.sourceTask() + ":" + msg.stream() + " with packets:" + numPackets +" to: " + sharedFile);
 
     }
+
+    private void write(byte []packetBytes) {
+        writer.startExcerpt(packetSize);
+        writer.write(packetBytes);
+        writer.finish();
+    }
+
 
     @Override
     public Object recv(Integer taskId, int flags) {
@@ -220,11 +227,7 @@ public class IntraNodeClient implements IConnection {
 
     @Override
     public void close() {
-        try {
-            writer.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+         writer.close();
     }
 
     @Override
@@ -234,38 +237,38 @@ public class IntraNodeClient implements IConnection {
 
     public static void main(String[] args) {
 //        String baseFile = "E:\\";
-        String baseFile = "/dev/shm";
+        final String baseFile = "/tmp";
 //        String baseFile = "/home/supun/dev/projects/jstorm-modified";
-        String nodeFile = "nodeFile";
+        final String nodeFile = "nodeFile";
 //        try {
 //            Files.deleteIfExists(Paths.get(baseFile + "/" + nodeFile + "_" + 1));
 //        }
 //        catch (IOException e) {
 //            e.printStackTrace();
 //        }
-//        IntraNodeServer server = new IntraNodeServer(baseFile, nodeFile, 1, 1, IntraNodeServer.DEFAULT_FILE_SIZE, new ConcurrentHashMap<Integer, DisruptorQueue>());
+        IntraNodeServer server = new IntraNodeServer(baseFile, nodeFile, 1, 1, new ConcurrentHashMap<Integer, DisruptorQueue>());
 
-        try {
-            final IntraNodeClient client = new IntraNodeClient(baseFile, nodeFile, 1, 1, IntraNodeServer.DEFAULT_FILE_SIZE, IntraNodeServer.PACKET_SIZE);
-            String s = "1";
-            Random random = new Random();
-            byte b[] = new byte[1000];
-            random.nextBytes(b);
-            for (int j = 0; j < 1; j++) {
-                final String finalS = s;
-                Thread t = new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-                        for (int i = 0; i < 1000000; i++) {
-                            client.send(new TaskMessage(1, finalS.getBytes(), 1, "" + i));
+        String s = "1";
+        Random random = new Random();
+        byte b[] = new byte[100000];
+        random.nextBytes(b);
+        for (int j = 0; j < 100; j++) {
+            final String finalS = s;
+            Thread t = new Thread(new Runnable() {
+                public void run() {
+                    final IntraNodeClient client = new IntraNodeClient(baseFile, nodeFile, 1, 1, IntraNodeServer.PACKET_SIZE);
+                    for (int i = 0; i < 1000; i++) {
+                        try {
+                            client.write(new TaskMessage(1, finalS.getBytes(), 1, "" + i));
+                        } catch (EOFException e) {
+                            e.printStackTrace();
                         }
                     }
-                });
-                t.start();
-            }
-            System.out.println("******************************************   total packet count: " + client.totalPacketCount);
-        } catch (IOException e) {
-            e.printStackTrace();
+                }
+            });
+            t.start();
         }
+        //System.out.println("******************************************   total packet count: " + client.totalPacketCount);
+
     }
 }

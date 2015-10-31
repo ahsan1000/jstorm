@@ -4,6 +4,10 @@ import backtype.storm.messaging.IConnection;
 import backtype.storm.messaging.TaskMessage;
 import backtype.storm.utils.DisruptorQueue;
 import io.mappedbus.MappedBusReader;
+import net.openhft.chronicle.Chronicle;
+import net.openhft.chronicle.ChronicleQueueBuilder;
+import net.openhft.chronicle.ExcerptTailer;
+import net.openhft.chronicle.VanillaChronicle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,91 +20,78 @@ public class IntraNodeServer implements IConnection {
     private static Logger LOG = LoggerFactory.getLogger(IntraNodeServer.class);
     public static final int LONG_BYTES = 8;
     public static final int INTEGER_BYTES = 4;
-    public static final long DEFAULT_FILE_SIZE = 20000000L;
     public static final int PACKET_SIZE = 1024;
 
-    // 2 Longs for uuid, 1 int for total number of packets, and 1 int for packet number
-    private static int metaDataExtent = 2 * LONG_BYTES + 2 * INTEGER_BYTES;
     private HashMap<UUID, ArrayList<ByteBuffer>> msgs = new HashMap<UUID, ArrayList<ByteBuffer>>();
     private ConcurrentHashMap<Integer, DisruptorQueue> deserializeQueues;
 
-    private MappedBusReader reader;
-    private final int packetSize = PACKET_SIZE;
-
     private boolean run = true;
 
+    private int count = 0, count2 = 0;
+    private String sharedFile;
+
+    private ExcerptTailer tailer;
     private Thread serverThread;
 
-    int count = 0, count2 = 0;
-    String sharedFile;
-    public IntraNodeServer(String baseFile, String supervisorId, int sourceTask, int targetTask, long fileSize, ConcurrentHashMap<Integer, DisruptorQueue> deserializeQueues) {
+    public IntraNodeServer(String baseFile, String supervisorId, int sourceTask, int targetTask, ConcurrentHashMap<Integer, DisruptorQueue> deserializeQueues) {
         this.deserializeQueues = deserializeQueues;
-        sharedFile = baseFile + "/" + supervisorId + "_" + sourceTask + "_" + targetTask;;
+        sharedFile = baseFile + "/" + supervisorId + "_" + sourceTask;
 
-        this.reader = new MappedBusReader(sharedFile, fileSize, packetSize, true);
         try {
-            reader.open();
-            LOG.info("Starting intranode server: " + sharedFile);
+            Chronicle inbound = ChronicleQueueBuilder
+                    .vanilla(sharedFile).entriesPerCycle(2 << 24).cycle(VanillaChronicle.Cycle.SECONDS).cycleLength(3600000)
+                    .build();
+            tailer = inbound.createTailer().toEnd();
             serverThread = new Thread(new ServerWorker());
             serverThread.start();
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            e.printStackTrace();
         }
     }
 
     public class ServerWorker implements Runnable {
+
         public void run() {
-            try {
-                byte[] bytes = new byte[packetSize];
-                ByteBuffer buffer = ByteBuffer.wrap(bytes);
-                int length, totalPackets;
-                UUID uuid;
-                ArrayList<ByteBuffer> packets;
-                boolean isFresh;
-                while (run) {
-                    if (reader.next()) {
-                        length = reader.readBuffer(bytes, 0);
-                        assert length == packetSize;
-                        uuid = new UUID(buffer.getLong(0),
-                                buffer.getLong(LONG_BYTES));
-                        totalPackets = buffer.getInt(2 * LONG_BYTES);
-                        packets = msgs.get(uuid);
-                        if ((isFresh = packets == null)){
-                            packets = new ArrayList<ByteBuffer>();
-                        }
-                        packets.add(ByteBuffer.wrap(Arrays.copyOf(bytes,
-                                    bytes.length)));
+            int packetSize = PACKET_SIZE;
+            byte[] bytes = new byte[packetSize];
+            ByteBuffer buffer = ByteBuffer.wrap(bytes);
+            int length, totalPackets;
+            UUID uuid;
+            ArrayList<ByteBuffer> packets;
+            boolean isFresh;
 
-                        count2++;
-                        LOG.info("Received memory message with packets {}, to worker {}", totalPackets, sharedFile);
-                        if (packets.size() == totalPackets){
-                            createMsg(isFresh ? packets : msgs.remove(uuid));
-                            continue;
-                        }
-                        if (isFresh){
-                            msgs.put(uuid, packets);
-                        }
-                    } else {
-//                        LOG.info("Next false: {}", sharedFile);
+            while (run) {
+                if (tailer.nextIndex()) {
+                    length = tailer.read(bytes);
+                    assert length == packetSize;
+                    uuid = new UUID(buffer.getLong(0),
+                            buffer.getLong(LONG_BYTES));
+                    totalPackets = buffer.getInt(2 * LONG_BYTES);
+                    packets = msgs.get(uuid);
+                    if ((isFresh = packets == null)){
+                        packets = new ArrayList<ByteBuffer>();
                     }
-//                    if (count > 900) {
-//                         System.out.println("Size of in complete messages: " + msgs.size() + " count2: " + count2);
-//                        Thread.sleep(100);
-//                    }
+                    packets.add(ByteBuffer.wrap(Arrays.copyOf(bytes,
+                            bytes.length)));
 
+                    count2++;
+                    //LOG.info("Received memory message with packets {}, to worker {}", totalPackets, sharedFile);
+                    if (packets.size() == totalPackets){
+                        createMsg(isFresh ? packets : msgs.remove(uuid));
+                        continue;
+                    }
+                    if (isFresh){
+                        msgs.put(uuid, packets);
+                    }
                 }
-                LOG.info("Intranode server shutdown....");
-            } catch (Throwable e) {
-                LOG.error("Error occurred", e);
             }
         }
     }
 
     private void createMsg(ArrayList<ByteBuffer> packets) {
         Collections.sort(packets, new Comparator<ByteBuffer>() {
-            @Override
             public int compare(ByteBuffer p1, ByteBuffer p2) {
-                int offset = 2*LONG_BYTES;
+                int offset = 2 * LONG_BYTES;
                 final int packetNum1 = p1.getInt(offset);
                 final int packetNum2 = p2.getInt(offset);
                 return packetNum1 < packetNum2 ? -1 : (packetNum1 == packetNum2 ? 0 : 1);
@@ -109,6 +100,7 @@ public class IntraNodeServer implements IConnection {
         int packetNumber = 0;
         ByteBuffer packet = packets.get(packetNumber);
         int packetSize = packet.capacity();
+        int metaDataExtent = 2 * LONG_BYTES + 2 * INTEGER_BYTES;
         int packetDataSize = packet.capacity() - metaDataExtent;
         int offset = 2*LONG_BYTES+2*INTEGER_BYTES;
         int task = packet.getInt(offset);
@@ -176,13 +168,8 @@ public class IntraNodeServer implements IConnection {
         }
 
         TaskMessage msg = new TaskMessage(task, content, Integer.parseInt(new String(compId)), new String(stream));
-        String stream1 = msg.stream();
-//        int streamNo = Integer.parseInt(stream1);
-//        if (streamNo != this.count) {
-//            LOG.error("{} != {} **************************************************************************************************************************", streamNo, this.count);
-//        }
-        LOG.info("Recvd message: " + msg.task() + " " + Integer.parseInt(new String(compId)) + ":" + stream1 + ": count: " + ++this.count);
-        enqueue(msg);
+        String msgStream = msg.stream();
+        LOG.info("Recvd message: " + msg.task() + " " + Integer.parseInt(new String(compId)) + ":" + msgStream + ": count: " + ++this.count);
     }
 
     @Override
@@ -228,9 +215,7 @@ public class IntraNodeServer implements IConnection {
             if (serverThread != null) {
                 serverThread.join();
             }
-            reader.close();
-        } catch (IOException e) {
-            LOG.warn("Failed to close reader", e);
+            tailer.close();
         } catch (InterruptedException ignore) {
         }
     }
@@ -250,7 +235,7 @@ public class IntraNodeServer implements IConnection {
 //        catch (IOException e) {
 //            e.printStackTrace();
 //        }
-        IntraNodeServer server = new IntraNodeServer(baseFile, nodeFile, 6801, 6802, IntraNodeServer.DEFAULT_FILE_SIZE, new ConcurrentHashMap<Integer, DisruptorQueue>());
+        IntraNodeServer server = new IntraNodeServer(baseFile, nodeFile, 6801, 6802, new ConcurrentHashMap<Integer, DisruptorQueue>());
     }
 }
 
