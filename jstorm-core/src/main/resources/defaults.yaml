@@ -224,7 +224,7 @@ storm.messaging.netty.authentication: false
 storm.group.mapping.service.cache.duration.secs: 120
 
 # Intranode communications
-storm.messaging.intranode.base_file: "/dev/shm"
+storm.messaging.intranode.base_file: "/tmp"
 
 ### topology.* configs are for specific executing storms
 topology.enable.message.timeouts: true
