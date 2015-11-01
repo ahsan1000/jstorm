@@ -4,6 +4,7 @@ import backtype.storm.messaging.IConnection;
 import backtype.storm.messaging.TaskMessage;
 import backtype.storm.utils.DisruptorQueue;
 import io.mappedbus.MappedBusReader;
+import net.openhft.affinity.AffinityLock;
 import net.openhft.chronicle.Chronicle;
 import net.openhft.chronicle.ChronicleQueueBuilder;
 import net.openhft.chronicle.ExcerptTailer;
@@ -39,7 +40,7 @@ public class IntraNodeServer implements IConnection {
 
         try {
             Chronicle inbound = ChronicleQueueBuilder
-                    .vanilla(sharedFile).entriesPerCycle(2 << 24).cycle(VanillaChronicle.Cycle.SECONDS).cycleLength(3600000)
+                    .vanilla(sharedFile).cycle(VanillaChronicle.Cycle.SECONDS).cycleLength(3600000)
                     .build();
             tailer = inbound.createTailer().toEnd();
             serverThread = new Thread(new ServerWorker());

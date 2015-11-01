@@ -47,7 +47,7 @@ public class IntraNodeClient implements IConnection {
 
         try {
             Chronicle outbound = ChronicleQueueBuilder
-                    .vanilla(sharedFile).entriesPerCycle(2 << 24).cycle(VanillaChronicle.Cycle.SECONDS).cycleLength(3600000)
+                    .vanilla(sharedFile).cycle(VanillaChronicle.Cycle.SECONDS).cycleLength(3600000)
                     .build();
             writer = outbound.createAppender();
         } catch (IOException e) {
