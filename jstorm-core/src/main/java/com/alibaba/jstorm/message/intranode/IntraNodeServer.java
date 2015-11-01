@@ -45,7 +45,9 @@ public class IntraNodeServer implements IConnection {
             serverThread = new Thread(new ServerWorker());
             serverThread.start();
         } catch (IOException e) {
-            e.printStackTrace();
+            String s = "Failed to create the memory mapped queue";
+            LOG.error(s, e);
+            throw new RuntimeException(s, e);
         }
     }
 
@@ -169,7 +171,8 @@ public class IntraNodeServer implements IConnection {
 
         TaskMessage msg = new TaskMessage(task, content, Integer.parseInt(new String(compId)), new String(stream));
         String msgStream = msg.stream();
-        LOG.info("Recvd message: " + msg.task() + " " + Integer.parseInt(new String(compId)) + ":" + msgStream + ": count: " + ++this.count);
+        // LOG.info("Recvd message: " + msg.task() + " " + Integer.parseInt(new String(compId)) + ":" + msgStream + ": count: " + ++this.count);
+        enqueue(msg);
     }
 
     @Override

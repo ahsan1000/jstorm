@@ -172,7 +172,7 @@ public class IntraNodeClient implements IConnection {
         packetCount++;
         write(packetBytes);
         totalPacketCount += packetCount;
-        LOG.info("Writing message: " + msg.task() + " " + msg.sourceTask() + ":" + msg.stream() + " with packets:" + numPackets +" to: " + sharedFile);
+        //LOG.info("Writing message: " + msg.task() + " " + msg.sourceTask() + ":" + msg.stream() + " with packets:" + numPackets +" to: " + sharedFile);
 
     }
 
