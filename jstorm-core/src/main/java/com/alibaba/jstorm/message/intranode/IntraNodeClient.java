@@ -2,6 +2,7 @@ package com.alibaba.jstorm.message.intranode;
 
 import backtype.storm.messaging.IConnection;
 import backtype.storm.messaging.TaskMessage;
+import backtype.storm.metric.SystemBolt;
 import backtype.storm.utils.DisruptorQueue;
 import net.openhft.chronicle.Chronicle;
 import net.openhft.chronicle.ChronicleQueueBuilder;
@@ -47,7 +48,7 @@ public class IntraNodeClient implements IConnection {
 
         try {
             Chronicle outbound = ChronicleQueueBuilder
-                    .vanilla(sharedFile).cycle(VanillaChronicle.Cycle.SECONDS).cycleLength(3600000)
+                    .vanilla(sharedFile).synchronous(false)
                     .build();
             writer = outbound.createAppender();
         } catch (IOException e) {
@@ -59,6 +60,7 @@ public class IntraNodeClient implements IConnection {
 
     private synchronized void write(TaskMessage msg) throws EOFException {
         //LOG.info("Writing message: " + msg.task() + " " + msg.sourceTask() + ":" + msg.stream() + " to: " + sharedFile);
+        long t0 = System.currentTimeMillis();
         UUID uuid = UUID.randomUUID();
         byte[] content = msg.message();
         // extent is metadata + msg
@@ -172,14 +174,20 @@ public class IntraNodeClient implements IConnection {
         packetCount++;
         write(packetBytes);
         totalPacketCount += packetCount;
-        //LOG.info("Writing message: " + msg.task() + " " + msg.sourceTask() + ":" + msg.stream() + " with packets:" + numPackets +" to: " + sharedFile);
+        LOG.info("Writing message: " + msg.task() + " " + msg.sourceTask() + ":" + msg.stream() + " with packets:" + numPackets +"and packetNum: "+ packetNumber + " to: " + sharedFile);
+        LOG.info("Write time {}", System.currentTimeMillis() - t0);
 
     }
 
     private void write(byte []packetBytes) {
+        long t0 = System.currentTimeMillis();
         writer.startExcerpt(packetSize);
+        long t1 = System.currentTimeMillis();
         writer.write(packetBytes);
+        long t2 = System.currentTimeMillis();
         writer.finish();
+        long t = System.currentTimeMillis();
+        LOG.info("Time to write complete: {}, start: {}, write: {}, finish: {}" + (t - t0), t1 - t0, t2 - t1, t - t2);
     }
 
 
@@ -246,21 +254,24 @@ public class IntraNodeClient implements IConnection {
 //        catch (IOException e) {
 //            e.printStackTrace();
 //        }
-        IntraNodeServer server = new IntraNodeServer(baseFile, nodeFile, 1, 1, new ConcurrentHashMap<Integer, DisruptorQueue>());
+        // IntraNodeServer server = new IntraNodeServer(baseFile, nodeFile, 1, 1, new ConcurrentHashMap<Integer, DisruptorQueue>());
 
         String s = "1";
         Random random = new Random();
         byte b[] = new byte[100000];
         random.nextBytes(b);
-        for (int j = 0; j < 100; j++) {
+        for (int j = 0; j < 2; j++) {
             final String finalS = s;
             Thread t = new Thread(new Runnable() {
                 public void run() {
-                    final IntraNodeClient client = new IntraNodeClient(baseFile, nodeFile, 1, 1, IntraNodeServer.PACKET_SIZE);
-                    for (int i = 0; i < 1000; i++) {
+                    final IntraNodeClient client = new IntraNodeClient(baseFile, nodeFile, 2, 2, IntraNodeServer.PACKET_SIZE);
+                    for (int i = 0; i < 100000; i++) {
                         try {
                             client.write(new TaskMessage(1, finalS.getBytes(), 1, "" + i));
+                            Thread.sleep(1);
                         } catch (EOFException e) {
+                            e.printStackTrace();
+                        } catch (InterruptedException e) {
                             e.printStackTrace();
                         }
                     }

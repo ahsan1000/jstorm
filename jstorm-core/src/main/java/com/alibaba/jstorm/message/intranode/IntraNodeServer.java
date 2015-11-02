@@ -4,7 +4,6 @@ import backtype.storm.messaging.IConnection;
 import backtype.storm.messaging.TaskMessage;
 import backtype.storm.utils.DisruptorQueue;
 import io.mappedbus.MappedBusReader;
-import net.openhft.affinity.AffinityLock;
 import net.openhft.chronicle.Chronicle;
 import net.openhft.chronicle.ChronicleQueueBuilder;
 import net.openhft.chronicle.ExcerptTailer;
@@ -40,7 +39,7 @@ public class IntraNodeServer implements IConnection {
 
         try {
             Chronicle inbound = ChronicleQueueBuilder
-                    .vanilla(sharedFile).cycle(VanillaChronicle.Cycle.SECONDS).cycleLength(3600000)
+                    .vanilla(sharedFile).synchronous(false)
                     .build();
             tailer = inbound.createTailer().toEnd();
             serverThread = new Thread(new ServerWorker());
@@ -92,6 +91,7 @@ public class IntraNodeServer implements IConnection {
     }
 
     private void createMsg(ArrayList<ByteBuffer> packets) {
+        long t0 = System.currentTimeMillis();
         Collections.sort(packets, new Comparator<ByteBuffer>() {
             public int compare(ByteBuffer p1, ByteBuffer p2) {
                 int offset = 2 * LONG_BYTES;
@@ -172,8 +172,9 @@ public class IntraNodeServer implements IConnection {
 
         TaskMessage msg = new TaskMessage(task, content, Integer.parseInt(new String(compId)), new String(stream));
         String msgStream = msg.stream();
-        // LOG.info("Recvd message: " + msg.task() + " " + Integer.parseInt(new String(compId)) + ":" + msgStream + ": count: " + ++this.count);
+        LOG.info("Recvd message: " + msg.task() + " " + Integer.parseInt(new String(compId)) + ":" + msgStream + ": count: " + ++this.count);
         enqueue(msg);
+        LOG.info("Read time: {}", System.currentTimeMillis() - t0);
     }
 
     @Override
@@ -230,16 +231,16 @@ public class IntraNodeServer implements IConnection {
     }
 
     public static void main(String[] args) {
-        String baseFile = "/dev/shm";
-//        String baseFile = "";
-        String nodeFile = "ec10a060-7950-440b-88f0-d09baf3bc863";
+        final String baseFile = "/tmp";
+//        String baseFile = "/home/supun/dev/projects/jstorm-modified";
+        final String nodeFile = "nodeFile";
 //        try {
 //            Files.deleteIfExists(Paths.get(baseFile + "/" + nodeFile + "_" + 1));
 //        }
 //        catch (IOException e) {
 //            e.printStackTrace();
 //        }
-        IntraNodeServer server = new IntraNodeServer(baseFile, nodeFile, 6801, 6802, new ConcurrentHashMap<Integer, DisruptorQueue>());
+        IntraNodeServer server = new IntraNodeServer(baseFile, nodeFile, 2, 2, new ConcurrentHashMap<Integer, DisruptorQueue>());
     }
 }
 
