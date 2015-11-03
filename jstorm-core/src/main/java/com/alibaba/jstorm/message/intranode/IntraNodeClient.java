@@ -157,20 +157,20 @@ public class IntraNodeClient implements IConnection {
         packetCount++;
         write(packetBytes);
         totalPacketCount += packetCount;
-        LOG.info("Writing message: " + msg.task() + " " + msg.sourceTask() + ":" + msg.stream() + " with packets:" + numPackets + "and packetNum: " + packetNumber + " to: " + sharedFile);
-        LOG.info("Write time {}", System.currentTimeMillis() - t0);
+        //LOG.info("Writing message: " + msg.task() + " " + msg.sourceTask() + ":" + msg.stream() + " with packets:" + numPackets + "and packetNum: " + packetNumber + " to: " + sharedFile);
+        //LOG.info("Write time {}", System.currentTimeMillis() - t0);
 
     }
 
     private void write(byte []packetBytes) {
         long t0 = System.currentTimeMillis();
-        writer.startExcerpt();
-        long t1 = System.currentTimeMillis();
+        writer.startExcerpt(packetSize);
+        //long t1 = System.currentTimeMillis();
         writer.write(packetBytes);
-        long t2 = System.currentTimeMillis();
+        //long t2 = System.currentTimeMillis();
         writer.finish();
-        long t = System.currentTimeMillis();
-        LOG.info("Time to write {} complete: {}, start: {}, write: {}, finish: {}", sharedFile, (t - t0), t1 - t0, t2 - t1, t - t2);
+        //long t = System.currentTimeMillis();
+        //LOG.info("Time to write {} complete: {}, start: {}, write: {}, finish: {}", sharedFile, (t - t0), t1 - t0, t2 - t1, t - t2);
     }
 
 
