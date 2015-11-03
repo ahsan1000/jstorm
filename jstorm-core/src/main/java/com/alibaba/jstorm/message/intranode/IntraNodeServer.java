@@ -172,9 +172,9 @@ public class IntraNodeServer implements IConnection {
 
         TaskMessage msg = new TaskMessage(task, content, Integer.parseInt(new String(compId)), new String(stream));
         String msgStream = msg.stream();
-        //LOG.info("Recvd message: " + msg.task() + " " + Integer.parseInt(new String(compId)) + ":" + msgStream + ": count: " + ++this.count);
+        LOG.info("Recvd message: " + msg.task() + " " + Integer.parseInt(new String(compId)) + ":" + msgStream + ": count: " + ++this.count);
         enqueue(msg);
-        //LOG.info("Read time: {}", System.currentTimeMillis() - t0);
+        LOG.info("Read time: {}", System.currentTimeMillis() - t0);
     }
 
     @Override
