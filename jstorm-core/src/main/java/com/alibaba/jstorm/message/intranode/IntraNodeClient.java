@@ -2,29 +2,22 @@ package com.alibaba.jstorm.message.intranode;
 
 import backtype.storm.messaging.IConnection;
 import backtype.storm.messaging.TaskMessage;
-import backtype.storm.metric.SystemBolt;
 import backtype.storm.utils.DisruptorQueue;
-import net.openhft.chronicle.Chronicle;
-import net.openhft.chronicle.ChronicleQueueBuilder;
 import net.openhft.chronicle.ExcerptAppender;
-import net.openhft.chronicle.VanillaChronicle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.EOFException;
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
-import java.util.Random;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class IntraNodeClient implements IConnection {
-    private static Logger LOG = LoggerFactory.getLogger(IntraNodeServer.class);
+    private static Logger LOG = LoggerFactory.getLogger(IntraNodeClient.class);
     public static final int LONG_BYTES = 8;
     public static final int INTEGER_BYTES = 4;
     // 1 int for task#, 1 int for content.length, 1 int for componentID.length, 1 int for stream.length
-    private static int constMsgExtent = 4*INTEGER_BYTES;
+    private static int constMsgExtent = 4 * INTEGER_BYTES;
     private final int packetSize;
     private final int packetDataSize;
     private ByteBuffer packet;
@@ -34,28 +27,18 @@ public class IntraNodeClient implements IConnection {
 
     private ExcerptAppender writer;
 
-    public IntraNodeClient(String baseFile, String supervisorId, int targetTaskId, int sourceTaskId, int packetSize) {
+    public IntraNodeClient(String sharedFile, int packetSize, ExcerptAppender writer) {
         int metaDataExtent = 2 * LONG_BYTES + 2 * INTEGER_BYTES;
         if (packetSize < metaDataExtent +constMsgExtent){
             throw new RuntimeException("Packet size (" + packetSize + ") should be greater or equal to " + (metaDataExtent +constMsgExtent) + "");
         }
         this.packetSize = packetSize;
         this.packetDataSize = packetSize - metaDataExtent;
+        this.sharedFile = sharedFile;
 
         packetBytes = new byte[packetSize];
         this.packet = ByteBuffer.wrap(packetBytes);
-        sharedFile = baseFile + "/" + supervisorId + "_" +  targetTaskId;
-
-        try {
-            Chronicle outbound = ChronicleQueueBuilder
-                    .vanilla(sharedFile).synchronous(false)
-                    .build();
-            writer = outbound.createAppender();
-        } catch (IOException e) {
-            String s = "Failed to create the memory mapped queue";
-            LOG.error(s, e);
-            throw new RuntimeException(s, e);
-        }
+        this.writer = writer;
     }
 
     private synchronized void write(TaskMessage msg) throws EOFException {
@@ -174,20 +157,20 @@ public class IntraNodeClient implements IConnection {
         packetCount++;
         write(packetBytes);
         totalPacketCount += packetCount;
-        LOG.info("Writing message: " + msg.task() + " " + msg.sourceTask() + ":" + msg.stream() + " with packets:" + numPackets +"and packetNum: "+ packetNumber + " to: " + sharedFile);
+        LOG.info("Writing message: " + msg.task() + " " + msg.sourceTask() + ":" + msg.stream() + " with packets:" + numPackets + "and packetNum: " + packetNumber + " to: " + sharedFile);
         LOG.info("Write time {}", System.currentTimeMillis() - t0);
 
     }
 
     private void write(byte []packetBytes) {
         long t0 = System.currentTimeMillis();
-        writer.startExcerpt(packetSize);
+        writer.startExcerpt();
         long t1 = System.currentTimeMillis();
         writer.write(packetBytes);
         long t2 = System.currentTimeMillis();
         writer.finish();
         long t = System.currentTimeMillis();
-        LOG.info("Time to write complete: {}, start: {}, write: {}, finish: {}" + (t - t0), t1 - t0, t2 - t1, t - t2);
+        LOG.info("Time to write {} complete: {}, start: {}, write: {}, finish: {}", sharedFile, (t - t0), t1 - t0, t2 - t1, t - t2);
     }
 
 
@@ -256,29 +239,30 @@ public class IntraNodeClient implements IConnection {
 //        }
         // IntraNodeServer server = new IntraNodeServer(baseFile, nodeFile, 1, 1, new ConcurrentHashMap<Integer, DisruptorQueue>());
 
-        String s = "1";
-        Random random = new Random();
-        byte b[] = new byte[100000];
-        random.nextBytes(b);
-        for (int j = 0; j < 2; j++) {
-            final String finalS = s;
-            Thread t = new Thread(new Runnable() {
-                public void run() {
-                    final IntraNodeClient client = new IntraNodeClient(baseFile, nodeFile, 2, 2, IntraNodeServer.PACKET_SIZE);
-                    for (int i = 0; i < 100000; i++) {
-                        try {
-                            client.write(new TaskMessage(1, finalS.getBytes(), 1, "" + i));
-                            Thread.sleep(1);
-                        } catch (EOFException e) {
-                            e.printStackTrace();
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
-                        }
-                    }
-                }
-            });
-            t.start();
-        }
+//        String s = "1";
+//        Random random = new Random();
+//        byte b[] = new byte[100000];
+//        random.nextBytes(b);
+//        final IntraNodeClient client = new IntraNodeClient(baseFile, nodeFile, 2, 2, IntraNodeServer.PACKET_SIZE);
+//
+//        for (int j = 0; j < 4; j++) {
+//            final String finalS = s;
+//            Thread t = new Thread(new Runnable() {
+//                public void run() {
+//                    for (int i = 0; i < 100000; i++) {
+//                        try {
+//                            client.write(new TaskMessage(1, finalS.getBytes(), 1, "" + i));
+//                            Thread.sleep(1);
+//                        } catch (EOFException e) {
+//                            e.printStackTrace();
+//                        } catch (InterruptedException e) {
+//                            e.printStackTrace();
+//                        }
+//                    }
+//                }
+//            });
+//            t.start();
+//        }
         //System.out.println("******************************************   total packet count: " + client.totalPacketCount);
 
     }

@@ -27,6 +27,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import backtype.storm.generated.GlobalStreamId;
 import backtype.storm.tuple.Tuple;
 import backtype.storm.tuple.TupleImplExt;
+import com.alibaba.jstorm.message.intranode.IntraNodeClients;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -73,7 +74,7 @@ public class TaskTransfer {
     protected DisruptorQueue transferQueue;
     protected KryoTupleSerializer serializer;
     protected Map<Integer, DisruptorQueue> innerTaskTransfer;
-    protected ConcurrentHashMap<Integer, IConnection> intraNodeConnections;
+    protected ConcurrentHashMap<Integer, IntraNodeClients> intraNodeConnections;
     protected DisruptorQueue serializeQueue;
     protected final AsyncLoopThread serializeThread;
     protected volatile TaskStatus taskStatus;
@@ -312,7 +313,8 @@ public class TaskTransfer {
         } else {
             // LOG.info("***********" + thisNodePort.getNodeId() + ":" + nodePort.getNodeId());
             if (thisNodePort.getNodeId().equals(nodePort.getNodeId())) {
-                conn = intraNodeConnections.get(nodePort.getPort());
+                IntraNodeClients clients = intraNodeConnections.get(nodePort.getPort());
+                conn = clients.getClient(this.taskId);
             }
             if (conn == null) {
                 conn = nodeportSocket.get(nodePort);

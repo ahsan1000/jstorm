@@ -252,7 +252,16 @@
 					<groupId>ch.qos.logback</groupId>
 					<artifactId>logback-classic</artifactId>
 				</exclusion>
+				<exclusion>
+					<groupId>net.openhft</groupId>
+					<artifactId>affinity</artifactId>
+				</exclusion>
 			</exclusions>
+		</dependency>
+		<dependency>
+			<groupId>net.openhft</groupId>
+			<artifactId>affinity</artifactId>
+			<version>3.0.1-SNAPSHOT</version>
 		</dependency>
 		<dependency>
 			<groupId>org.mockito</groupId>

@@ -26,7 +26,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import com.alibaba.jstorm.message.intranode.IntraNodeClient;
+import com.alibaba.jstorm.message.intranode.IntraNodeClients;
 import com.alibaba.jstorm.message.intranode.IntraNodeServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -90,7 +90,7 @@ public class RefreshConnections extends RunnableCallback {
      * Intra node communication using memory mapped files. We create a connection for
      * every worker in the same node.
      */
-    private ConcurrentHashMap<Integer, IConnection> intraNodeConnections;
+    private ConcurrentHashMap<Integer, IntraNodeClients> intraNodeConnections;
 
     // private ReentrantReadWriteLock endpoint_socket_lock;
 
@@ -300,7 +300,7 @@ public class RefreshConnections extends RunnableCallback {
                 for (Integer intra_port : intranode_new_connections) {
                     //LOG.info("Creating intranode client: " + workerData.getSupervisorId() + ":" + intra_port);
                     // TODO: pass worker id
-                    IConnection connection = new IntraNodeClient(baseFile, workerData.getSupervisorId(), intra_port,
+                    IntraNodeClients connection = new IntraNodeClients(baseFile, workerData.getSupervisorId(), intra_port,
                             workerData.getPort(), IntraNodeServer.PACKET_SIZE);
                     intraNodeConnections.put(intra_port, connection);
                 }

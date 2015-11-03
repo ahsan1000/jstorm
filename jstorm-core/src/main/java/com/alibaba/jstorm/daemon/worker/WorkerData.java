@@ -34,6 +34,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import com.alibaba.jstorm.message.intranode.IntraNodeClients;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -107,7 +108,7 @@ public class WorkerData {
     private ConcurrentHashMap<WorkerSlot, IConnection> nodeportSocket;
 
     // intra node connections using memory mapped files to workers in same node
-    private ConcurrentHashMap<Integer, IConnection> intraNodeConnections;
+    private ConcurrentHashMap<Integer, IntraNodeClients> intraNodeConnections;
     // <taskId, NodePort>
     private ConcurrentHashMap<Integer, WorkerSlot> taskNodeport;
 
@@ -267,7 +268,7 @@ public class WorkerData {
         this.sendingQueue.consumerStarted();
 
         this.nodeportSocket = new ConcurrentHashMap<WorkerSlot, IConnection>();
-        this.intraNodeConnections = new ConcurrentHashMap<Integer, IConnection>();
+        this.intraNodeConnections = new ConcurrentHashMap<Integer, IntraNodeClients>();
 
         this.taskNodeport = new ConcurrentHashMap<Integer, WorkerSlot>();
         this.workerToResource = new ConcurrentSkipListSet<ResourceWorkerSlot>();
@@ -399,7 +400,7 @@ public class WorkerData {
         return nodeportSocket;
     }
 
-    public ConcurrentHashMap<Integer, IConnection> getIntraNodeConnections() {
+    public ConcurrentHashMap<Integer, IntraNodeClients> getIntraNodeConnections() {
         return intraNodeConnections;
     }
 
