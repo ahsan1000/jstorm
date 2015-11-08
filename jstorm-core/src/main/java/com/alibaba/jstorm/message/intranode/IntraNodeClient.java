@@ -39,7 +39,7 @@ public class IntraNodeClient implements IConnection {
 
         packetBytes = new byte[packetSize];
         this.packet = ByteBuffer.wrap(packetBytes);
-        sharedFile = baseFile + "/" + supervisorId + "_" +  targetTaskId + "_" + sourceTaskId;
+        sharedFile = baseFile + "/" + supervisorId + "_" +  targetTaskId;
         LOG.info("Starting intrannode clien on: " + sharedFile);
         writer = new MappedBusWriter(sharedFile, fileSize, packetSize, false);
         writer.open();
@@ -226,9 +226,9 @@ public class IntraNodeClient implements IConnection {
 
     public static void main(String[] args) {
 //        String baseFile = "E:\\";
-        String baseFile = "/dev/shm";
+        final String baseFile = "/dev/shm";
 //        String baseFile = "/home/supun/dev/projects/jstorm-modified";
-        String nodeFile = "nodeFile";
+        final String nodeFile = "nodeFile";
 //        try {
 //            Files.deleteIfExists(Paths.get(baseFile + "/" + nodeFile + "_" + 1));
 //        }
@@ -237,8 +237,7 @@ public class IntraNodeClient implements IConnection {
 //        }
         //IntraNodeServer server = new IntraNodeServer(baseFile, nodeFile, 1, 1, IntraNodeServer.DEFAULT_FILE_SIZE, new ConcurrentHashMap<Integer, DisruptorQueue>());
 
-        try {
-            final IntraNodeClient client = new IntraNodeClient(baseFile, nodeFile, 1, 1, IntraNodeServer.DEFAULT_FILE_SIZE, IntraNodeServer.PACKET_SIZE);
+
             String s = "adadadadfsdf0000000000000000000000008866660000000ad";
             Random random = new Random();
             for (int i = 0; i< 1; i++) {
@@ -250,16 +249,20 @@ public class IntraNodeClient implements IConnection {
                 Thread t = new Thread(new Runnable() {
                     @Override
                     public void run() {
-                        for (int i = 0; i < 10000; i++) {
+                        IntraNodeClient client = null;
+                        try {
+                            client = new IntraNodeClient(baseFile, nodeFile, 1, 1, IntraNodeServer.DEFAULT_FILE_SIZE, IntraNodeServer.PACKET_SIZE);
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+
+                        for (int i = 0; i < 100000; i++) {
                             client.send(new TaskMessage(1, finalS.getBytes(), "1", "" + i));
                         }
                     }
                 });
                 t.start();
             }
-            System.out.println("******************************************   total packet count: " + client.totalPacketCount);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+
     }
 }

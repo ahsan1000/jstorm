@@ -35,7 +35,7 @@ public class IntraNodeServer implements IConnection {
 
     public IntraNodeServer(String baseFile, String supervisorId, int sourceTask, int targetTask, long fileSize, ConcurrentHashMap<Integer, DisruptorQueue> deserializeQueues) {
         this.deserializeQueues = deserializeQueues;
-        String sharedFile = baseFile + "/" + supervisorId + "_" + sourceTask + "_" + targetTask;;
+        String sharedFile = baseFile + "/" + supervisorId + "_" + sourceTask;;
 
         this.reader = new MappedBusReader(sharedFile, fileSize, packetSize, true);
         try {

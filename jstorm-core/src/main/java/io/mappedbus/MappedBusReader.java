@@ -168,7 +168,7 @@ public class MappedBusReader {
 		if (rollback == Rollback.Set) {
 			limit += Length.RecordHeader + recordSize;
 			timeoutCounter = 0;
-			LOG.info("Skip roll set");
+//			LOG.info("Skip roll set");
 			timerStart = 0;
 			return false;
 		}
@@ -176,7 +176,7 @@ public class MappedBusReader {
 			// we are not ready yet
 			// we have already seen this, no point reading again
 			if (read == Read.Set) {
-				LOG.info("Skip read set");
+//				LOG.info("Skip read set");
 				return false;
 			}
 			timeoutCounter = 0;
@@ -260,7 +260,7 @@ public class MappedBusReader {
 				// LOG.info("CurrentIndex {}, MemoryIndex {}", currentIndex, memoryIndex);
 				if (memoryIndex > currentIndex) {
 					mem.unmap();
-					LOG.info("Moving to new file: " + fileName + (currentIndex + 1));
+//					LOG.info("Moving to new file: " + fileName + (currentIndex + 1));
 					// now lets go to the next file
 					mem = new MemoryMappedFile(fileName + (currentIndex + 1), fileSize);
 					// okay we have read to the end and one of the writers have move to the next

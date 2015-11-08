@@ -155,9 +155,9 @@ public class MappedBusWriter {
 		while (true) {
 			long index = sharedFile.getLongVolatile(0);
 			if (index > currentIndex) {
-				LOG.info("Alloc");
+//				LOG.info("Alloc");
 				nextFile(false);
-				LOG.info("Moved to next");
+//				LOG.info("Moved to next");
 			} else if (index < currentIndex) {
 				throw new RuntimeException("Index cannot go backward");
 			}
@@ -168,7 +168,7 @@ public class MappedBusWriter {
 //			if (limit == 0) {
 //				limit = mem.getAndAddLong(Structure.Limit, entrySize);
 //			}
-			LOG.info("Limit: {}", limit);
+//			LOG.info("Limit: {}", limit);
 			if (limit + entrySize < fileSize) {
 				return limit;
 			} else {
@@ -184,7 +184,7 @@ public class MappedBusWriter {
 					// okay if I moved the index to the next, I should create the file and clear it
 					if (moved || currentIndexRead > currentIndex) {
 						currentIndex = currentIndexRead;
-						LOG.info("Create new file... " + fileName + (currentIndex));
+//						LOG.info("Create new file... " + fileName + (currentIndex));
 						mem = new MemoryMappedFile(fileName + (currentIndex), fileSize);
                         if (moved) {
                             mem.putLongVolatile(Structure.Limit, Structure.Data);
@@ -212,7 +212,7 @@ public class MappedBusWriter {
 	}
 
 	public boolean nextFile(boolean reader) throws Exception {
-		LOG.info("Next.............................................................");
+//		LOG.info("Next.............................................................");
 		// in reader case, because we only have one reader, we simply move to the next file
 		if (reader) {
 			// acquire the lock and read the index
@@ -248,11 +248,11 @@ public class MappedBusWriter {
 				boolean moved = sharedFile.compareAndSwapLong(0, currentIndex, currentIndex + 1);
 				// now get the current index
                 long currentIndexRead = sharedFile.getLongVolatile(0);
-				LOG.info("current index: {}", currentIndex);
+//				LOG.info("current index: {}", currentIndex);
 				// okay if I moved the index to the next, I should create the file and clear it
 				if (moved || currentIndexRead > currentIndex) {
                     currentIndex = currentIndexRead;
-					LOG.info("Next file {}", fileName + currentIndex);
+//					LOG.info("Next file {}", fileName + currentIndex);
 					mem = new MemoryMappedFile(fileName + (currentIndex), fileSize);
                     if (moved) {
                         mem.putLongVolatile(Structure.Limit, Structure.Data);
@@ -270,9 +270,9 @@ public class MappedBusWriter {
 
 	public void acquireLock() {
 		// wait until we acquire the lock
-		LOG.info("Aquiring lock");
+//		LOG.info("Aquiring lock");
 		while (!sharedFile.compareAndSwapInt(8, 0, 1));
-		LOG.info("locked......");
+//		LOG.info("locked......");
 
 	}
 
