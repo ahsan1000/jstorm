@@ -24,6 +24,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.EOFException;
+import java.io.File;
 import java.io.IOException;
 
 /**
@@ -86,6 +87,10 @@ public class MappedBusReader {
 	private boolean typeRead;
 
 	private boolean clear;
+
+	private long currentIndex = 0;
+
+	private MemoryMappedFile sharedFile;
 	/**
 	 * Constructs a new reader.
 	 *
@@ -107,9 +112,11 @@ public class MappedBusReader {
 	 */
 	public void open() throws IOException {
 		try {
-			mem = new MemoryMappedFile(fileName, fileSize);
+			mem = new MemoryMappedFile(fileName + currentIndex, fileSize);
+			sharedFile = new MemoryMappedFile(fileName + "_shared", fileSize);
+			sharedFile.clearFile();
 			if (clear) {
-				mem.clearFile();
+				mem.putLongVolatile(Structure.Limit, Structure.Data);
 			} else {
 				mem.compareAndSwapLong(Structure.Limit, 0, Structure.Data);
 			}
@@ -140,10 +147,16 @@ public class MappedBusReader {
 	 * @return true, if there's a new record available, otherwise false
 	 * @throws EOFException in case the end of the file was reached
 	 */
-	public boolean next() throws EOFException {
+	public boolean next() throws Exception {
 		if (limit + recordSize + Length.RecordHeader >= fileSize) {
 			// we can see the limit in case the writer has set it and now trying to set it to 0
-			limit = Structure.Data;
+			// now lets try to move to the next file
+			boolean next = nextFile(true);
+			// if we didn't move there is nothing to read
+			if (!next) {
+				//LOG.info("No next, return false");
+				return false;
+			}
 		}
 		if (mem.getLongVolatile(Structure.Limit) <= limit) {
 			return false;
@@ -155,6 +168,7 @@ public class MappedBusReader {
 		if (rollback == Rollback.Set) {
 			limit += Length.RecordHeader + recordSize;
 			timeoutCounter = 0;
+			LOG.info("Skip roll set");
 			timerStart = 0;
 			return false;
 		}
@@ -162,6 +176,7 @@ public class MappedBusReader {
 			// we are not ready yet
 			// we have already seen this, no point reading again
 			if (read == Read.Set) {
+				LOG.info("Skip read set");
 				return false;
 			}
 			timeoutCounter = 0;
@@ -231,6 +246,71 @@ public class MappedBusReader {
 		mem.getBytes(limit, dst, offset, length);
 		limit += recordSize;
 		return length;
+	}
+
+	public boolean nextFile(boolean reader) throws Exception {
+		// LOG.info("Next.............................................................");
+		// in reader case, because we only have one reader, we simply move to the next file
+		if (reader) {
+			// acquire the lock and read the index
+			acquireLock();
+			try {
+				long memoryIndex = sharedFile.getLongVolatile(0);
+				// check weather the writers have move forward
+				// LOG.info("CurrentIndex {}, MemoryIndex {}", currentIndex, memoryIndex);
+				if (memoryIndex > currentIndex) {
+					mem.unmap();
+					LOG.info("Moving to new file: " + fileName + (currentIndex + 1));
+					// now lets go to the next file
+					mem = new MemoryMappedFile(fileName + (currentIndex + 1), fileSize);
+					// okay we have read to the end and one of the writers have move to the next
+					// lets delete the previous file
+					if (currentIndex > 0) {
+						File f = new File(fileName + (currentIndex - 1));
+						boolean delete = f.delete();
+					}
+					limit = Structure.Data;
+					currentIndex++;
+					return true;
+				} else {
+					return false;
+				}
+			} finally {
+				releaseLock();  // finally release the lock
+			}
+		} else {
+			MemoryMappedFile tmp = mem;
+			// acquire the lock
+			acquireLock();
+			try {
+				// lets try to update the currentIndex
+				// if multiple writes try to do this only one should succeed
+				boolean moved = sharedFile.compareAndSwapLong(0, currentIndex, currentIndex + 1);
+				// now get the current index
+				currentIndex = sharedFile.getLongVolatile(0);
+				// okay if I moved the index to the next, I should create the file and clear it
+				if (moved) {
+					mem = new MemoryMappedFile(fileName + (currentIndex), fileSize);
+					mem.clearFile();
+				}
+				return true;
+			} finally {
+				tmp.unmap();
+				releaseLock();
+			}
+		}
+	}
+
+	public void acquireLock() {
+		// wait until we acquire the lock
+		//LOG.info("Aquiring lock");
+		while (!sharedFile.compareAndSwapInt(8, 0, 1));
+		//LOG.info("locked......");
+
+	}
+
+	public void releaseLock() {
+		sharedFile.putIntVolatile(8, 0);
 	}
 
 	/**

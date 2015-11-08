@@ -21,6 +21,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.EOFException;
+import java.io.File;
 import java.io.IOException;
 
 /**
@@ -65,6 +66,10 @@ public class MappedBusWriter {
 
 	private long timeout = 10000;
 
+	private long currentIndex = 0;
+
+	private MemoryMappedFile sharedFile;
+
 	/**
 	 * Constructs a new writer.
 	 * 
@@ -90,15 +95,17 @@ public class MappedBusWriter {
 //			new File(fileName).delete();
 //		}
 		try {
-			mem = new MemoryMappedFile(fileName, fileSize);
+			mem = new MemoryMappedFile(fileName  + currentIndex, fileSize);
+			sharedFile = new MemoryMappedFile(fileName + "_shared", 128);
+			// sharedFile.clearFile();
 		} catch(Exception e) {
 			throw new IOException("Unable to open the file: " + fileName, e);
 		}
-		if (append) {
-			mem.compareAndSwapLong(Structure.Limit, 0, Structure.Data);
-		} else {
-			mem.putLongVolatile(Structure.Limit, Structure.Data);
-		}
+//		if (append) {
+//			mem.compareAndSwapLong(Structure.Limit, 0, Structure.Data);
+//		} else {
+//			mem.putLongVolatile(Structure.Limit, Structure.Data);
+//		}
 	}
 
 	/**
@@ -107,7 +114,7 @@ public class MappedBusWriter {
 	 * @param message the message object to write
 	 * @throws EOFException in case the end of the file was reached
 	 */
-	public void write(MappedBusMessage message) throws EOFException {
+	public void write(MappedBusMessage message) throws Exception {
 		long limit = allocate();
 		long commitPos = limit;
 		limit += Length.StatusFlags;
@@ -125,18 +132,10 @@ public class MappedBusWriter {
 	 * @param length the length of the data
 	 * @throws EOFException in case the end of the file was reached
 	 */
-	public boolean write(byte[] src, int offset, int length) throws EOFException {
+	public boolean write(byte[] src, int offset, int length) throws Exception {
 		long limit = allocate();
-		long time = System.currentTimeMillis();
 		while (limit < 0) {
-			try {
-				Thread.sleep(1);
-			} catch (InterruptedException e) {
-			}
-			if (System.currentTimeMillis() - time > timeout) {
-				throw new RuntimeException("Failed to write, no space left and possibly reader not available to free space");
-			}
-			limit = allocate();
+			throw new RuntimeException("Failed to write, no space left and possibly reader not available to free space limit: " + limit);
 		}
 		long commitPos = limit;
 		long readPos = commitPos + Length.Commit + Length.Rollback;
@@ -151,26 +150,134 @@ public class MappedBusWriter {
 		return true;
 	}
 	
-	private long allocate() throws EOFException {
-		long limit = mem.getLongVolatile(Structure.Limit);
-		if (limit + entrySize > fileSize) {
-			long lastLimit = limit - entrySize;
-			byte read = mem.getByteVolatile(lastLimit + Length.Rollback + Length.Commit);
-			// ok check weather the last thing we wrote has being read
-			if (read == MappedBusConstants.Read.NotSet) {
-				LOG.error("Failed to write last message, limit: " + limit);
-				return -1;
+	private long allocate() throws Exception {
+		long time = System.currentTimeMillis();
+		while (true) {
+			long index = sharedFile.getLongVolatile(0);
+			if (index > currentIndex) {
+				LOG.info("Alloc");
+				nextFile(false);
+				LOG.info("Moved to next");
+			} else if (index < currentIndex) {
+				throw new RuntimeException("Index cannot go backward");
+			}
+			// if a writer write to the end of the file and reader reads content from the file
+			// and deletes this index file during this time we are screwed.
+			// this is highly unlikely to happen, but can happen
+			long limit = mem.getAndAddLong(Structure.Limit, entrySize);
+//			if (limit == 0) {
+//				limit = mem.getAndAddLong(Structure.Limit, entrySize);
+//			}
+			LOG.info("Limit: {}", limit);
+			if (limit + entrySize < fileSize) {
+				return limit;
 			} else {
-				LOG.info("Rewind to beginning");
-				mem.putLongVolatile(Structure.Limit, Structure.Data);
+				MemoryMappedFile tmp = mem;
+				// acquire the lock
+				acquireLock();
+				try {
+					// lets try to update the currentIndex
+					// if multiple writes try to do this only one should succeed
+					boolean moved = sharedFile.compareAndSwapLong(0, currentIndex, currentIndex + 1);
+					// now get the current index
+					long currentIndexRead = sharedFile.getLongVolatile(0);
+					// okay if I moved the index to the next, I should create the file and clear it
+					if (moved || currentIndexRead > currentIndex) {
+						currentIndex = currentIndexRead;
+						LOG.info("Create new file... " + fileName + (currentIndex));
+						mem = new MemoryMappedFile(fileName + (currentIndex), fileSize);
+                        if (moved) {
+                            mem.putLongVolatile(Structure.Limit, Structure.Data);
+                        }
+						// mem.clearFile();
+					} else{
+						currentIndex = currentIndexRead;
+					}
+				} finally {
+					tmp.unmap();
+					releaseLock();
+				}
+			}
+
+			try {
+				Thread.sleep(1);
+			} catch (InterruptedException ignore) {
+			}
+
+			//LOG.info("Waiting....");
+			if (System.currentTimeMillis() - time > timeout) {
+				return -1;
 			}
 		}
+	}
 
-		limit = mem.getAndAddLong(Structure.Limit, entrySize);
-		if (limit + entrySize > fileSize) {
-			return -1;
+	public boolean nextFile(boolean reader) throws Exception {
+		LOG.info("Next.............................................................");
+		// in reader case, because we only have one reader, we simply move to the next file
+		if (reader) {
+			// acquire the lock and read the index
+			acquireLock();
+			try {
+				long memoryIndex = sharedFile.getLongVolatile(0);
+				// check weather the writers have move forward
+				if (memoryIndex > currentIndex) {
+					mem.unmap();
+					// now lets go to the next file
+					mem = new MemoryMappedFile(fileName + (currentIndex + 1), fileSize);
+					// okay we have read to the end and one of the writers have move to the next
+					// lets delete the previous file
+					if (currentIndex > 0) {
+						File f = new File(fileName + (currentIndex - 1));
+						boolean delete = f.delete();
+					}
+					currentIndex++;
+					return true;
+				} else {
+					return false;
+				}
+			} finally {
+				releaseLock();  // finally release the lock
+			}
+		} else {
+			MemoryMappedFile tmp = mem;
+			// acquire the lock
+			acquireLock();
+			try {
+				// lets try to update the currentIndex
+				// if multiple writes try to do this only one should succeed
+				boolean moved = sharedFile.compareAndSwapLong(0, currentIndex, currentIndex + 1);
+				// now get the current index
+                long currentIndexRead = sharedFile.getLongVolatile(0);
+				LOG.info("current index: {}", currentIndex);
+				// okay if I moved the index to the next, I should create the file and clear it
+				if (moved || currentIndexRead > currentIndex) {
+                    currentIndex = currentIndexRead;
+					LOG.info("Next file {}", fileName + currentIndex);
+					mem = new MemoryMappedFile(fileName + (currentIndex), fileSize);
+                    if (moved) {
+                        mem.putLongVolatile(Structure.Limit, Structure.Data);
+                    }
+				} else {
+                    currentIndex = currentIndexRead;
+                }
+				return true;
+			} finally {
+				tmp.unmap();
+				releaseLock();
+			}
 		}
-		return limit;
+	}
+
+	public void acquireLock() {
+		// wait until we acquire the lock
+		LOG.info("Aquiring lock");
+		while (!sharedFile.compareAndSwapInt(8, 0, 1));
+		LOG.info("locked......");
+
+	}
+
+	public void releaseLock() {
+		sharedFile.putIntVolatile(8, 0);
 	}
 
 	private void commit(long commitPos) {

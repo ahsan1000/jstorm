@@ -7,18 +7,14 @@ import io.mappedbus.MappedBusWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.List;
 import java.util.Random;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class IntraNodeClient implements IConnection {
-    private static Logger LOG = LoggerFactory.getLogger(IntraNodeServer.class);
+    private static Logger LOG = LoggerFactory.getLogger(IntraNodeClient.class);
     public static final int LONG_BYTES = 8;
     public static final int INTEGER_BYTES = 4;
     // 2 Longs for uuid, 1 int for total number of packets, and 1 int for packet number
@@ -31,6 +27,7 @@ public class IntraNodeClient implements IConnection {
     private ByteBuffer packet;
     private byte[] packetBytes;
     private String sharedFile;
+    private int totalPacketCount = 0;
 
     public IntraNodeClient(String baseFile, String supervisorId, int targetTaskId, int sourceTaskId, long fileSize, int packetSize)
         throws IOException {
@@ -47,8 +44,8 @@ public class IntraNodeClient implements IConnection {
         writer = new MappedBusWriter(sharedFile, fileSize, packetSize, false);
         writer.open();
     }
-    int totalPacketCount = 0;
-    private void write(TaskMessage msg) throws EOFException {
+
+    private synchronized void write(TaskMessage msg) throws Exception {
         LOG.info("Writing message: " + msg.task() + " " + msg.componentId() + ":" + msg.stream() + " to: " + sharedFile);
         UUID uuid = UUID.randomUUID();
         byte[] content = msg.message();
@@ -198,7 +195,7 @@ public class IntraNodeClient implements IConnection {
         for (TaskMessage taskMessage : messages) {
             try {
                 write(taskMessage);
-            } catch (EOFException e) {
+            } catch (Exception e) {
                 throw new RuntimeException("Faile to send message", e);
             }
         }
@@ -208,7 +205,7 @@ public class IntraNodeClient implements IConnection {
     public void send(TaskMessage message) {
         try {
             write(message);
-        } catch (EOFException e) {
+        } catch (Exception e) {
             throw new RuntimeException("Failed to send message", e);
         }
     }
@@ -238,7 +235,7 @@ public class IntraNodeClient implements IConnection {
 //        catch (IOException e) {
 //            e.printStackTrace();
 //        }
-        IntraNodeServer server = new IntraNodeServer(baseFile, nodeFile, 1, 1, IntraNodeServer.DEFAULT_FILE_SIZE, new ConcurrentHashMap<Integer, DisruptorQueue>());
+        //IntraNodeServer server = new IntraNodeServer(baseFile, nodeFile, 1, 1, IntraNodeServer.DEFAULT_FILE_SIZE, new ConcurrentHashMap<Integer, DisruptorQueue>());
 
         try {
             final IntraNodeClient client = new IntraNodeClient(baseFile, nodeFile, 1, 1, IntraNodeServer.DEFAULT_FILE_SIZE, IntraNodeServer.PACKET_SIZE);
@@ -248,12 +245,12 @@ public class IntraNodeClient implements IConnection {
                 int z = (int) random.nextDouble();
                 s += z;
             }
-            for (int j = 0; j < 10; j++) {
+            for (int j = 0; j < 4; j++) {
                 final String finalS = s;
                 Thread t = new Thread(new Runnable() {
                     @Override
                     public void run() {
-                        for (int i = 0; i < 1000; i++) {
+                        for (int i = 0; i < 10000; i++) {
                             client.send(new TaskMessage(1, finalS.getBytes(), "1", "" + i));
                         }
                     }
