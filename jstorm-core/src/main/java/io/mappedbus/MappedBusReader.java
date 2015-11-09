@@ -114,7 +114,8 @@ public class MappedBusReader {
 		try {
 			mem = new MemoryMappedFile(fileName + currentIndex, fileSize);
 			sharedFile = new MemoryMappedFile(fileName + "_shared", fileSize);
-			sharedFile.clearFile();
+			sharedFile.putLongVolatile(0, 0);
+			sharedFile.putIntVolatile(8, 0);
 			if (clear) {
 				mem.putLongVolatile(Structure.Limit, Structure.Data);
 			} else {
@@ -287,11 +288,18 @@ public class MappedBusReader {
 				// if multiple writes try to do this only one should succeed
 				boolean moved = sharedFile.compareAndSwapLong(0, currentIndex, currentIndex + 1);
 				// now get the current index
-				currentIndex = sharedFile.getLongVolatile(0);
+				long currentIndexRead = sharedFile.getLongVolatile(0);
+//				LOG.info("current index: {}", currentIndex);
 				// okay if I moved the index to the next, I should create the file and clear it
-				if (moved) {
+				if (moved || currentIndexRead > currentIndex) {
+					currentIndex = currentIndexRead;
+//					LOG.info("Next file {}", fileName + currentIndex);
 					mem = new MemoryMappedFile(fileName + (currentIndex), fileSize);
-					mem.clearFile();
+					if (moved) {
+						mem.putLongVolatile(Structure.Limit, Structure.Data);
+					}
+				} else {
+					currentIndex = currentIndexRead;
 				}
 				return true;
 			} finally {

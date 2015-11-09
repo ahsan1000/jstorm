@@ -244,7 +244,7 @@ public class IntraNodeClient implements IConnection {
                 int z = (int) random.nextDouble();
                 s += z;
             }
-            for (int j = 0; j < 4; j++) {
+            for (int j = 0; j < 20; j++) {
                 final String finalS = s;
                 Thread t = new Thread(new Runnable() {
                     @Override
