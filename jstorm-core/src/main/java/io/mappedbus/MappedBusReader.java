@@ -114,8 +114,8 @@ public class MappedBusReader {
 		try {
 			mem = new MemoryMappedFile(fileName + currentIndex, fileSize);
 			sharedFile = new MemoryMappedFile(fileName + "_shared", fileSize);
-			sharedFile.putLongVolatile(0, 0);
-			sharedFile.putIntVolatile(8, 0);
+			sharedFile.clearFile();
+//			sharedFile.putIntVolatile(8, 0);
 			if (clear) {
 				mem.putLongVolatile(Structure.Limit, Structure.Data);
 			} else {

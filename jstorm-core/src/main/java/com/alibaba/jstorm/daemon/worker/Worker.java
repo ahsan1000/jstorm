@@ -200,7 +200,7 @@ public class Worker {
 //        for (Integer port : thisPorts) {
 //            if (!port.equals(workerData.getPort())) {
                 IConnection intraNodeServer = new IntraNodeServer(baseFile, workerData.getSupervisorId(), workerData.getPort(), workerData.getPort(),
-                        IntraNodeServer.DEFAULT_FILE_SIZE, workerData.getDeserializeQueues());
+                        workerData.getDeserializeQueues(), workerData.getConf());
                 workerData.setIntraNodeServer(intraNodeServer);
 //            }
 //        }

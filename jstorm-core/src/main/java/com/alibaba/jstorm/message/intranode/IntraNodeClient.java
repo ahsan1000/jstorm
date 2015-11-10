@@ -1,5 +1,6 @@
 package com.alibaba.jstorm.message.intranode;
 
+import backtype.storm.Config;
 import backtype.storm.messaging.IConnection;
 import backtype.storm.messaging.TaskMessage;
 import backtype.storm.utils.DisruptorQueue;
@@ -10,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
 
@@ -21,7 +23,9 @@ public class IntraNodeClient implements IConnection {
     private static int metaDataExtent = 2*LONG_BYTES + 2*INTEGER_BYTES;
     // 1 int for task#, 1 int for content.length, 1 int for componentID.length, 1 int for stream.length
     private static int constMsgExtent = 4*INTEGER_BYTES;
-    private final int packetSize;
+    private int packetSize = IntraNodeServer.PACKET_SIZE;
+    private long fileSize = IntraNodeServer.DEFAULT_FILE_SIZE;
+
     private final int packetDataSize;
     private MappedBusWriter writer;
     private ByteBuffer packet;
@@ -29,12 +33,23 @@ public class IntraNodeClient implements IConnection {
     private String sharedFile;
     private int totalPacketCount = 0;
 
-    public IntraNodeClient(String baseFile, String supervisorId, int targetTaskId, int sourceTaskId, long fileSize, int packetSize)
+    public IntraNodeClient(String baseFile, String supervisorId, int targetTaskId, int sourceTaskId, Map conf)
         throws IOException {
+        if (conf != null) {
+            Integer fileSizeConf = (Integer) conf.get(Config.STORM_MESSAGING_INTRANODE_FILE_SIZE);
+            if (fileSizeConf != null) {
+                fileSize = fileSizeConf;
+            }
+
+            Integer packetSizeConf = (Integer) conf.get(Config.STORM_MESSAGING_INTRANODE_PACKET_SIZE);
+            if (packetSizeConf != null) {
+                packetSize = packetSizeConf;
+            }
+        }
+
         if (packetSize < metaDataExtent+constMsgExtent){
             throw new RuntimeException("Packet size (" + packetSize + ") should be greater or equal to " + (metaDataExtent+constMsgExtent) + "");
         }
-        this.packetSize = packetSize;
         this.packetDataSize = packetSize - metaDataExtent;
 
         packetBytes = new byte[packetSize];
@@ -251,7 +266,7 @@ public class IntraNodeClient implements IConnection {
                     public void run() {
                         IntraNodeClient client = null;
                         try {
-                            client = new IntraNodeClient(baseFile, nodeFile, 1, 1, IntraNodeServer.DEFAULT_FILE_SIZE, IntraNodeServer.PACKET_SIZE);
+                            client = new IntraNodeClient(baseFile, nodeFile, 1, 1, null);
                         } catch (IOException e) {
                             e.printStackTrace();
                         }
