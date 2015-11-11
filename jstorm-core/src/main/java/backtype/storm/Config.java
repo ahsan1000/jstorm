@@ -1426,6 +1426,7 @@ public class Config extends HashMap<String, Object> {
     public static final String STORM_MESSAGING_INTRANODE_PACKET_SIZE = "storm.messaging.intranode.packet_size";
     public static final String STORM_MESSAGING_INTRANODE_BASE_FILE = "storm.messaging.intranode.base_file";
     public static final String STORM_MESSAGING_INTRANODE_FILE_SIZE = "storm.messaging.intranode.file_size";
+    public static final String STORM_MESSAGING_INTRANODE_ENABLE = "storm.messaging.intranode.enable";
 
     public static void setClasspath(Map conf, String cp) {
         conf.put(Config.TOPOLOGY_CLASSPATH, cp);

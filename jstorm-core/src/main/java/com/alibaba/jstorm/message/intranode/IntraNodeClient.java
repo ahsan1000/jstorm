@@ -28,8 +28,8 @@ public class IntraNodeClient implements IConnection {
 
     private final int packetDataSize;
     private MappedBusWriter writer;
-    private ByteBuffer packet;
-    private byte[] packetBytes;
+//    private ByteBuffer packet;
+//    private byte[] packetBytes;
     private String sharedFile;
     private int totalPacketCount = 0;
 
@@ -52,15 +52,21 @@ public class IntraNodeClient implements IConnection {
         }
         this.packetDataSize = packetSize - metaDataExtent;
 
-        packetBytes = new byte[packetSize];
-        this.packet = ByteBuffer.wrap(packetBytes);
-        sharedFile = baseFile + "/" + supervisorId + "_" +  targetTaskId;
+//        packetBytes = new byte[packetSize];
+//        this.packet = ByteBuffer.wrap(packetBytes);
+        sharedFile = baseFile + "/"  + targetTaskId;
         LOG.info("Starting intrannode clien on: " + sharedFile);
         writer = new MappedBusWriter(sharedFile, fileSize, packetSize, false);
         writer.open();
     }
 
-    private synchronized void write(TaskMessage msg) throws Exception {
+    private void write(TaskMessage msg) throws Exception {
+        ByteBuffer packet;
+        byte[] packetBytes;
+
+        packetBytes = new byte[packetSize];
+        packet = ByteBuffer.wrap(packetBytes);
+
         LOG.info("Writing message: " + msg.task() + " " + msg.componentId() + ":" + msg.stream() + " to: " + sharedFile);
         UUID uuid = UUID.randomUUID();
         byte[] content = msg.message();

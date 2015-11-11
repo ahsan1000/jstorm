@@ -37,7 +37,7 @@ public class IntraNodeServer implements IConnection {
 
     public IntraNodeServer(String baseFile, String supervisorId, int sourceTask, int targetTask, ConcurrentHashMap<Integer, DisruptorQueue> deserializeQueues, Map conf) {
         this.deserializeQueues = deserializeQueues;
-        String sharedFile = baseFile + "/" + supervisorId + "_" + sourceTask;;
+        String sharedFile = baseFile + "/" + sourceTask;;
 
         if (conf != null) {
             Integer fileSizeConf = (Integer) conf.get(Config.STORM_MESSAGING_INTRANODE_FILE_SIZE);

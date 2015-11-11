@@ -520,6 +520,19 @@ public class Utils {
       }
       return result;
     }
+
+    public static Boolean getBoolean(Object o, Boolean defaultValue) {
+        if (null == o) {
+            return defaultValue;
+        }
+        if (o instanceof Boolean) {
+            return (Boolean) o;
+        } else if (o instanceof String) {
+            return Boolean.parseBoolean(o.toString());
+        } else {
+            throw new IllegalArgumentException("Don't know how to convert " + o + " to int");
+        }
+    }
     
     public static Integer getInt(Object o, Integer defaultValue) {
         if (null == o) {

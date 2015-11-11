@@ -163,6 +163,8 @@ public class WorkerData {
     /** This is the intranode server */
     private IConnection intraNodeServer;
 
+    private boolean intraNodeMessagingEnabled = false;
+
     @SuppressWarnings({ "rawtypes", "unchecked" })
     public WorkerData(Map conf, IContext context, String topology_id,
             String supervisor_id, int port, String worker_id, String jar_path)
@@ -268,6 +270,7 @@ public class WorkerData {
 
         this.nodeportSocket = new ConcurrentHashMap<WorkerSlot, IConnection>();
         this.intraNodeConnections = new ConcurrentHashMap<Integer, IConnection>();
+        this.intraNodeMessagingEnabled = Utils.getBoolean(conf.get(Config.STORM_MESSAGING_INTRANODE_ENABLE), false);
 
         this.taskNodeport = new ConcurrentHashMap<Integer, WorkerSlot>();
         this.workerToResource = new ConcurrentSkipListSet<ResourceWorkerSlot>();
@@ -630,5 +633,9 @@ public class WorkerData {
 
     public void setIntraNodeServer(IConnection intraNodeServer) {
         this.intraNodeServer = intraNodeServer;
+    }
+
+    public boolean isIntraNodeMessagingEnabled() {
+        return intraNodeMessagingEnabled;
     }
 }

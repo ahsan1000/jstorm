@@ -83,6 +83,8 @@ public class TaskTransfer {
 
     protected ConcurrentHashMap<Integer, WorkerSlot> taskNodeport;
 
+    protected boolean intraNodeMessagingEnabled = false;
+
     // broadcast tasks for each stream
     private DownstreamTasks downStreamTasks;
 
@@ -101,6 +103,7 @@ public class TaskTransfer {
         this.nodeportSocket = workerData.getNodeportSocket();
         this.intraNodeConnections = workerData.getIntraNodeConnections();
         this.taskNodeport = workerData.getTaskNodeport();
+        this.intraNodeMessagingEnabled = workerData.isIntraNodeMessagingEnabled();
 
         int queue_size =
                 Utils.getInt(storm_conf
@@ -306,7 +309,7 @@ public class TaskTransfer {
             LOG.warn("Intra transfer warn", new Exception(errormsg));
         } else {
             // LOG.info("***********" + thisNodePort.getNodeId() + ":" + nodePort.getNodeId());
-            if (thisNodePort.getNodeId().equals(nodePort.getNodeId())) {
+            if (intraNodeMessagingEnabled && thisNodePort.getNodeId().equals(nodePort.getNodeId())) {
                  conn = intraNodeConnections.get(nodePort.getPort());
             }
             if (conn == null) {
