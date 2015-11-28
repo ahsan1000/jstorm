@@ -20,6 +20,7 @@ package io.mappedbus;
  *
  */
 class MappedBusConstants {
+	public static final int SHARED_FILE_SIE = 128;
 
 	static class Structure {
 		
@@ -43,7 +44,7 @@ class MappedBusConstants {
 		
 		public static final int StatusFlags = Commit + Rollback + Read;
 
-		public static final int RecordHeader = Commit + Rollback +Read +  Metadata;
+		public static final int RecordHeader = Commit + Rollback + Read + Metadata;
 
 	}
 

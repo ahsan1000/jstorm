@@ -96,7 +96,7 @@ public class MappedBusWriter {
 //		}
 		try {
 			mem = new MemoryMappedFile(fileName  + currentIndex, fileSize);
-			sharedFile = new MemoryMappedFile(fileName + "_shared", 128);
+			sharedFile = new MemoryMappedFile(fileName + "_shared", MappedBusConstants.SHARED_FILE_SIE);
 			// sharedFile.clearFile();
 		} catch(Exception e) {
 			throw new IOException("Unable to open the file: " + fileName, e);
@@ -188,6 +188,7 @@ public class MappedBusWriter {
 						mem = new MemoryMappedFile(fileName + (currentIndex), fileSize);
                         if (moved) {
                             mem.putLongVolatile(Structure.Limit, Structure.Data);
+							mem.putByteVolatile(Structure.Data, Commit.NotSet);
                         }
 						// mem.clearFile();
 					} else{
@@ -256,6 +257,7 @@ public class MappedBusWriter {
 					mem = new MemoryMappedFile(fileName + (currentIndex), fileSize);
                     if (moved) {
                         mem.putLongVolatile(Structure.Limit, Structure.Data);
+						mem.putByteVolatile(Structure.Data, Commit.NotSet);
                     }
 				} else {
                     currentIndex = currentIndexRead;

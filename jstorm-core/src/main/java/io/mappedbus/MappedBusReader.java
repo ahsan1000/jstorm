@@ -113,11 +113,13 @@ public class MappedBusReader {
 	public void open() throws IOException {
 		try {
 			mem = new MemoryMappedFile(fileName + currentIndex, fileSize);
-			sharedFile = new MemoryMappedFile(fileName + "_shared", fileSize);
+			mem.clearFile();
+			sharedFile = new MemoryMappedFile(fileName + "_shared", MappedBusConstants.SHARED_FILE_SIE);
 			sharedFile.clearFile();
-//			sharedFile.putIntVolatile(8, 0);
+			sharedFile.putIntVolatile(8, 0);
 			if (clear) {
 				mem.putLongVolatile(Structure.Limit, Structure.Data);
+				mem.putByteVolatile(Structure.Data, Commit.NotSet);
 			} else {
 				mem.compareAndSwapLong(Structure.Limit, 0, Structure.Data);
 			}
@@ -160,6 +162,7 @@ public class MappedBusReader {
 			}
 		}
 		if (mem.getLongVolatile(Structure.Limit) <= limit) {
+//			LOG.info("----------------------------------------------  FALSE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 			return false;
 		}
 		byte commit = mem.getByteVolatile(limit);
@@ -169,19 +172,24 @@ public class MappedBusReader {
 		if (rollback == Rollback.Set) {
 			limit += Length.RecordHeader + recordSize;
 			timeoutCounter = 0;
-//			LOG.info("Skip roll set");
+//			LOG.info("----------------------------------------------  Skip roll set -----------------------------------------------------------------------");
 			timerStart = 0;
 			return false;
 		}
 		if (commit == Commit.Set) {
+//			LOG.info("######################################################  Skip roll not set ######################################################");
 			// we are not ready yet
 			// we have already seen this, no point reading again
 			if (read == Read.Set) {
+				limit += Length.RecordHeader + recordSize;
 //				LOG.info("Skip read set");
+				timeoutCounter = 0;
+				timerStart = 0;
 				return false;
 			}
 			timeoutCounter = 0;
 			timerStart = 0;
+			LOG.info("******************************** Reading next  **************************");
 			return true;
 		}
 		timeoutCounter++;
@@ -238,6 +246,8 @@ public class MappedBusReader {
 	 * @return the length of the record that was read
 	 */
 	public int readBuffer(byte[] dst, int offset) {
+		// unset the commit flag
+		mem.putByteVolatile(limit, Commit.NotSet);
 		limit += Length.Commit + Length.Rollback;
 		// set the read byte
 		mem.putByteVolatile(limit, Read.Set);
@@ -297,6 +307,7 @@ public class MappedBusReader {
 					mem = new MemoryMappedFile(fileName + (currentIndex), fileSize);
 					if (moved) {
 						mem.putLongVolatile(Structure.Limit, Structure.Data);
+						mem.putByteVolatile(Structure.Data, Commit.NotSet);
 					}
 				} else {
 					currentIndex = currentIndexRead;

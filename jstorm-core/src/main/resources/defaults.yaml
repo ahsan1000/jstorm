@@ -226,7 +226,8 @@ storm.group.mapping.service.cache.duration.secs: 120
 # Intranode communications
 storm.messaging.intranode.enable: true
 storm.messaging.intranode.base_file: "/dev/shm"
-storm.messaging.intranode.file_size: 2000000
+# 200 MB file for sharing data
+storm.messaging.intranode.file_size: 209715200
 storm.messaging.intranode.packet_size: 1024
 
 ### topology.* configs are for specific executing storms
