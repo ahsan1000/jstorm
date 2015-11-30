@@ -66,7 +66,7 @@ public class MappedBusWriter {
 
 	private long timeout = 10000;
 
-	private long currentIndex = 0;
+	private volatile long currentIndex = 0;
 
 	private MemoryMappedFile sharedFile;
 
@@ -132,7 +132,7 @@ public class MappedBusWriter {
 	 * @param length the length of the data
 	 * @throws EOFException in case the end of the file was reached
 	 */
-	public synchronized boolean write(byte[] src, int offset, int length) throws Exception {
+	public boolean write(byte[] src, int offset, int length) throws Exception {
 		long limit = allocate();
 		while (limit < 0) {
 			throw new RuntimeException("Failed to write, no space left and possibly reader not available to free space limit: " + limit);
