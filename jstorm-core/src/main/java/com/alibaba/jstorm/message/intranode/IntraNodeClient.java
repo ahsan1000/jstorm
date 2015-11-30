@@ -32,8 +32,8 @@ public class IntraNodeClient implements IConnection {
 //    private byte[] packetBytes;
     private String sharedFile;
     private int totalPacketCount = 0;
-    private ThreadLocal<ByteBuffer> packetThreadLocal = new ThreadLocal<ByteBuffer>();
-    private ThreadLocal<byte[]> packetBytesBufferThreadLocal = new ThreadLocal<byte[]>();
+//    private ThreadLocal<ByteBuffer> packetThreadLocal = new ThreadLocal<ByteBuffer>();
+//    private ThreadLocal<byte[]> packetBytesBufferThreadLocal = new ThreadLocal<byte[]>();
 
     public IntraNodeClient(String baseFile, String supervisorId, int targetTaskId, int sourceTaskId, Map conf)
         throws IOException {
@@ -65,15 +65,15 @@ public class IntraNodeClient implements IConnection {
     private void write(TaskMessage msg) throws Exception {
         ByteBuffer packet;
         byte[] packetBytes;
-        if (packetThreadLocal.get() != null) {
-            packetBytes = packetBytesBufferThreadLocal.get();
-            packet = packetThreadLocal.get();
-        } else {
+//        if (packetThreadLocal.get() != null) {
+//            packetBytes = packetBytesBufferThreadLocal.get();
+//            packet = packetThreadLocal.get();
+//        } else {
             packetBytes = new byte[packetSize];
             packet = ByteBuffer.wrap(packetBytes);
-            packetBytesBufferThreadLocal.set(packetBytes);
-            packetThreadLocal.set(packet);
-        }
+//            packetBytesBufferThreadLocal.set(packetBytes);
+//            packetThreadLocal.set(packet);
+//        }
 
         LOG.info("Writing message: " + msg.task() + " " + msg.componentId() + ":" + msg.stream() + " to: " + sharedFile);
         UUID uuid = UUID.randomUUID();
