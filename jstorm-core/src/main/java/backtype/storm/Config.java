@@ -823,6 +823,8 @@ public class Config extends HashMap<String, Object> {
     public static final String SUPERVISOR_SLOTS_PORTS = "supervisor.slots.ports";
     public static final Object SUPERVISOR_SLOTS_PORTS_SCHEMA = ConfigValidation.IntegersValidator;
 
+    public static final String SUPERVISOR_SLOTS_PORTS_CPU_BINDS = "supervisor.slots.port.cpu.binds";
+
     /**
      * A number representing the maximum number of workers any single topology can acquire.
      */

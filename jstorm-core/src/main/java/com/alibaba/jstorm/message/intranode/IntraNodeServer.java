@@ -5,6 +5,9 @@ import backtype.storm.messaging.IConnection;
 import backtype.storm.messaging.TaskMessage;
 import backtype.storm.utils.DisruptorQueue;
 import io.mappedbus.MappedBusReader;
+import net.openhft.affinity.Affinity;
+import net.openhft.affinity.AffinityLock;
+import net.openhft.affinity.AffinitySupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,7 +41,7 @@ public class IntraNodeServer implements IConnection {
     public IntraNodeServer(String baseFile, String supervisorId, int sourceTask, int targetTask, ConcurrentHashMap<Integer, DisruptorQueue> deserializeQueues, Map conf) {
         this.deserializeQueues = deserializeQueues;
         String sharedFile = baseFile + "/" + sourceTask;;
-
+        int cpu = -1;
         if (conf != null) {
             Integer fileSizeConf = (Integer) conf.get(Config.STORM_MESSAGING_INTRANODE_FILE_SIZE);
             if (fileSizeConf != null) {
@@ -49,22 +52,40 @@ public class IntraNodeServer implements IConnection {
             if (packetSizeConf != null) {
                 packetSize = packetSizeConf;
             }
+
+            Object cpuBindsConfig = conf.get(Config.SUPERVISOR_SLOTS_PORTS_CPU_BINDS);
+            if (cpuBindsConfig != null && cpuBindsConfig instanceof Map) {
+                Object cpuConfig = ((Map) cpuBindsConfig).get(sourceTask);
+                if (cpuConfig != null && cpuConfig instanceof  Integer) {
+                    cpu = (int) cpuConfig;
+                }
+            }
         }
 
         this.reader = new MappedBusReader(sharedFile, fileSize, packetSize, true);
         try {
             reader.open();
             LOG.info("Starting intranode server: " + sharedFile);
-            serverThread = new Thread(new ServerWorker());
+            serverThread = new Thread(new ServerWorker(cpu));
             serverThread.start();
+
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
     public class ServerWorker implements Runnable {
+        int cpu;
+
+        public ServerWorker(int cpu) {
+            this.cpu = cpu;
+        }
+
         public void run() {
             try {
+                if (cpu > 0) {
+                    Affinity.setAffinity(1 << cpu);
+                }
                 byte[] bytes = new byte[packetSize];
                 ByteBuffer buffer = ByteBuffer.wrap(bytes);
                 int length, totalPackets;

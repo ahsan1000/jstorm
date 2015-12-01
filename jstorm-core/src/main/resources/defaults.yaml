@@ -140,6 +140,12 @@ supervisor.slots.ports: null
 #    - 6801
 #    - 6802
 #    - 6803
+#supervisor.slots.port.cpu.binds:
+#     - 6800: 1
+#     - 6801: 2
+#     - 6802: 3
+#     - 6804: 4
+
 supervisor.childopts: " -Xms512m -Xmx512m -Xmn128m -XX:PermSize=64m -XX:+UseConcMarkSweepGC  -XX:+UseCMSInitiatingOccupancyOnly -XX:CMSInitiatingOccupancyFraction=70 -XX:CMSFullGCsBeforeCompaction=5 -XX:+HeapDumpOnOutOfMemoryError  -XX:+UseCMSCompactAtFullCollection -XX:CMSMaxAbortablePrecleanTime=5000 "
 supervisor.run.worker.as.user: false
 #how long supervisor will wait to ensure that a worker process is started
