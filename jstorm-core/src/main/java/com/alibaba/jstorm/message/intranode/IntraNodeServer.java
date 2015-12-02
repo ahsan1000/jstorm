@@ -88,18 +88,24 @@ public class IntraNodeServer implements IConnection {
         int cpu;
 
         public ServerWorker(int cpu) {
+            LOG.info("Creating server worker....");
             this.cpu = cpu;
         }
 
         public void run() {
             try {
+
+                LOG.info("Starting server worker....");
                 if (cpu > 0) {
-                    LOG.info("Setting affinity of process {} thread {} to {}", sourceTask, Affinity.getThreadId(), cpu);
-                    Affinity.setAffinity(1 << cpu);
-                    LOG.info("CPU of task {} thread {} is {}", sourceTask, Affinity.getThreadId(), Affinity.getCpu());
+                    //LOG.info("Setting affinity of process {} thread {} to {}", sourceTask, Affinity.getThreadId(), cpu);
+                    BitSet bitSet = new BitSet(24);
+                    bitSet.set(cpu);
+                    Affinity.setAffinity(bitSet);
+                    //LOG.info("CPU of task {} thread {} is {}", sourceTask, Affinity.getThreadId(), Affinity.getCpu());
                 } else {
                     LOG.info("Not Setting affinity of process {}", cpu);
                 }
+                LOG.info("started intranode server worker....");
                 byte[] bytes = new byte[packetSize];
                 ByteBuffer buffer = ByteBuffer.wrap(bytes);
                 int length, totalPackets;

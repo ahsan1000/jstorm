@@ -196,11 +196,11 @@ public class TaskReceiver {
         public void onEvent(Object event, long sequence, boolean endOfBatch)
                 throws Exception {
             if (event instanceof TaskMessage) {
-                LOG.info("Received task message {} {}", ((TaskMessage) event).componentId(), ((TaskMessage) event).stream());
+                //LOG.info("Received task message {} {}", ((TaskMessage) event).componentId(), ((TaskMessage) event).stream());
                 processTaskMessage((TaskMessage) event);
             } else {
                 Object tuple = deserialize((byte[]) event);
-                LOG.info("Receive tuple....");
+                //LOG.info("Receive tuple....");
                 if (tuple instanceof Tuple) {
                     processTupleEvent((Tuple) tuple, event);
                 } else if (tuple instanceof BatchTuple) {
@@ -223,16 +223,16 @@ public class TaskReceiver {
             String streamId = event.stream();
             String sourceComponent = event.componentId();
             GlobalStreamId globalStreamId = new GlobalStreamId(sourceComponent, streamId);
-            LOG.info("Task Received message with stream ID: {} ", globalStreamId);
+            //LOG.info("Task Received message with stream ID: {} ", globalStreamId);
             StringBuilder innerTaskTextMsg = new StringBuilder();
             StringBuilder outerTaskTextMsg = new StringBuilder();
             // lets determine weather we need to send this message to other tasks as well acting as an intermediary
             Map<GlobalStreamId, Set<Integer>> downsTasks = downStreamTasks.allDownStreamTasks(taskId);
-            LOG.info("Task RECEIVE taskId: {}, down tasks: {}", taskId, DownstreamTasks.printDownTasks(downsTasks));
+            //LOG.info("Task RECEIVE taskId: {}, down tasks: {}", taskId, DownstreamTasks.printDownTasks(downsTasks));
             if (downsTasks != null && downsTasks.containsKey(globalStreamId) && !downsTasks.get(globalStreamId).isEmpty()) {
                 // for now lets use the deserialized task and send it back... ideally we should send the byte message
                 Set<Integer> tasks = downsTasks.get(globalStreamId);
-                LOG.info("RECEIVE tasks: {}", tasks);
+                //LOG.info("RECEIVE tasks: {}", tasks);
                 for (Integer task : tasks) {
                     if (task != taskId) {
                         // these tasks can be in the same worker or in a different worker
@@ -264,12 +264,12 @@ public class TaskReceiver {
                     }
                 }
             }
-            if (LOG.isInfoEnabled()) {
-                StringBuilder sb = new StringBuilder("TASK RECEIVE: Sending downstream message from task ").append(topologyContext.getThisTaskId()).append(" [");
-                sb.append("inner tasks: ").append(innerTaskTextMsg).append(" outer tasks: ").append(outerTaskTextMsg);
-                sb.append("]");
-                LOG.info(sb.toString());
-            }
+//            if (LOG.isInfoEnabled()) {
+//                StringBuilder sb = new StringBuilder("TASK RECEIVE: Sending downstream message from task ").append(topologyContext.getThisTaskId()).append(" [");
+//                sb.append("inner tasks: ").append(innerTaskTextMsg).append(" outer tasks: ").append(outerTaskTextMsg);
+//                sb.append("]");
+//                LOG.info(sb.toString());
+//            }
         }
 
         private void processTupleEvent(Tuple tuple, Object event) {
@@ -278,14 +278,14 @@ public class TaskReceiver {
                 String sourceCompoent = tuple.getSourceComponent();
                 int sourceTask = tuple.getSourceTask();
                 GlobalStreamId globalStreamId = new GlobalStreamId(sourceCompoent, streamId);
-                LOG.info("Received message with stream ID: {} sourceTask {}", globalStreamId, sourceTask);
+                //LOG.info("Received message with stream ID: {} sourceTask {}", globalStreamId, sourceTask);
                 // lets determine weather we need to send this message to other tasks as well acting as an intermediary
                 Map<GlobalStreamId, Set<Integer>> downsTasks = downStreamTasks.allDownStreamTasks(taskId);
-                LOG.info("RECEIVE taskId: {}, down tasks: {}", taskId, DownstreamTasks.printDownTasks(downsTasks));
+                //LOG.info("RECEIVE taskId: {}, down tasks: {}", taskId, DownstreamTasks.printDownTasks(downsTasks));
                 if (downsTasks != null && downsTasks.containsKey(globalStreamId) && !downsTasks.get(globalStreamId).isEmpty()) {
                     // for now lets use the deserialized task and send it back... ideally we should send the byte message
                     Set<Integer> tasks = downsTasks.get(globalStreamId);
-                    LOG.info("RECEIVE tasks tuple: {}", tasks);
+                    //LOG.info("RECEIVE tasks tuple: {}", tasks);
                     StringBuilder innerTaskTextMsg = new StringBuilder();
                     StringBuilder outerTaskTextMsg = new StringBuilder();
                     for (Integer task : tasks) {
@@ -305,14 +305,14 @@ public class TaskReceiver {
                         }
                     }
 
-                    if (LOG.isInfoEnabled()) {
-                        StringBuilder sb = new StringBuilder("RECEIVE: Sending downstream message from task ").append(topologyContext.getThisTaskId()).append(" [");
-                        sb.append("inner tasks: ").append(innerTaskTextMsg).append(" outer tasks: ").append(outerTaskTextMsg);
-                        sb.append("]");
-                        LOG.info(sb.toString());
-                    }
+//                    if (LOG.isInfoEnabled()) {
+//                        StringBuilder sb = new StringBuilder("RECEIVE: Sending downstream message from task ").append(topologyContext.getThisTaskId()).append(" [");
+//                        sb.append("inner tasks: ").append(innerTaskTextMsg).append(" outer tasks: ").append(outerTaskTextMsg);
+//                        sb.append("]");
+//                        LOG.info(sb.toString());
+//                    }
                 } else {
-                    LOG.info("No Downstream task for message with stream ID: " + globalStreamId);
+                    //LOG.info("No Downstream task for message with stream ID: " + globalStreamId);
                     exeQueue.publish(tuple);
                 }
             }
