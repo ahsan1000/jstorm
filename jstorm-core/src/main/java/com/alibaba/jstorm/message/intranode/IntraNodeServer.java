@@ -62,13 +62,13 @@ public class IntraNodeServer implements IConnection {
                 if (cpuConfig != null && cpuConfig instanceof  Integer) {
                     cpu = (int) cpuConfig;
                 } else {
-                    LOG.error("Not a integer");
+                    LOG.info("Not a integer");
                 }
             } else {
-                LOG.error("Not a map");
+                LOG.info("Not a map");
             }
         } else {
-            LOG.error("Conf null in intraserver");
+            LOG.info("Conf null in intraserver");
         }
 
         this.reader = new MappedBusReader(sharedFile, fileSize, packetSize, true);
@@ -93,11 +93,11 @@ public class IntraNodeServer implements IConnection {
         public void run() {
             try {
                 if (cpu > 0) {
-                    LOG.error("Setting affinity of process {} thread {} to {}", sourceTask, Affinity.getThreadId(), cpu);
+                    LOG.info("Setting affinity of process {} thread {} to {}", sourceTask, Affinity.getThreadId(), cpu);
                     Affinity.setAffinity(1 << cpu);
-                    LOG.error("CPU of task {} thread {} is {}", sourceTask, Affinity.getThreadId(), Affinity.getCpu());
+                    LOG.info("CPU of task {} thread {} is {}", sourceTask, Affinity.getThreadId(), Affinity.getCpu());
                 } else {
-                    LOG.error("Not Setting affinity of process {}", cpu);
+                    LOG.info("Not Setting affinity of process {}", cpu);
                 }
                 byte[] bytes = new byte[packetSize];
                 ByteBuffer buffer = ByteBuffer.wrap(bytes);
