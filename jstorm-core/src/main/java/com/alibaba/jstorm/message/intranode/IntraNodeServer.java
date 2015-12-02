@@ -87,7 +87,7 @@ public class IntraNodeServer implements IConnection {
         public void run() {
             try {
                 if (cpu > 0) {
-                    LOG.info("Setting affinity of process {} to {}", sourceTask, cpu);
+                    LOG.error("Setting affinity of process {} to {}", sourceTask, cpu);
                     Affinity.setAffinity(1 << cpu);
                 }
                 byte[] bytes = new byte[packetSize];
