@@ -61,7 +61,11 @@ public class IntraNodeServer implements IConnection {
                 Object cpuConfig = ((Map) cpuBindsConfig).get(sourceTask);
                 if (cpuConfig != null && cpuConfig instanceof  Integer) {
                     cpu = (int) cpuConfig;
+                } else {
+                    LOG.error("Not a integer");
                 }
+            } else {
+                LOG.error("Not a map");
             }
         }
 
@@ -89,6 +93,8 @@ public class IntraNodeServer implements IConnection {
                 if (cpu > 0) {
                     LOG.error("Setting affinity of process {} to {}", sourceTask, cpu);
                     Affinity.setAffinity(1 << cpu);
+                } else {
+                    LOG.error("Not Setting affinity of process {}", cpu);
                 }
                 byte[] bytes = new byte[packetSize];
                 ByteBuffer buffer = ByteBuffer.wrap(bytes);
