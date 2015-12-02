@@ -38,10 +38,13 @@ public class IntraNodeServer implements IConnection {
 
     private int count = 0;
 
+    private int sourceTask;
+
     public IntraNodeServer(String baseFile, String supervisorId, int sourceTask, int targetTask, ConcurrentHashMap<Integer, DisruptorQueue> deserializeQueues, Map conf) {
         this.deserializeQueues = deserializeQueues;
         String sharedFile = baseFile + "/" + sourceTask;;
         int cpu = -1;
+        this.sourceTask = sourceTask;
         if (conf != null) {
             Integer fileSizeConf = (Integer) conf.get(Config.STORM_MESSAGING_INTRANODE_FILE_SIZE);
             if (fileSizeConf != null) {
@@ -84,6 +87,7 @@ public class IntraNodeServer implements IConnection {
         public void run() {
             try {
                 if (cpu > 0) {
+                    LOG.info("Setting affinity of process {} to {}", sourceTask, cpu);
                     Affinity.setAffinity(1 << cpu);
                 }
                 byte[] bytes = new byte[packetSize];
