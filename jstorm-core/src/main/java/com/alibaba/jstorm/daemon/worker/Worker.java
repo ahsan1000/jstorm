@@ -487,7 +487,6 @@ public class Worker {
         StringBuilder sb = new StringBuilder();
 
         try {
-            AffinitySupport.setThreadId();
             String topology_id = args[0];
             String supervisor_id = args[1];
             String port_str = args[2];
