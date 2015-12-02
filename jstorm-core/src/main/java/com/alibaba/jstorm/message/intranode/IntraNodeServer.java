@@ -67,6 +67,8 @@ public class IntraNodeServer implements IConnection {
             } else {
                 LOG.error("Not a map");
             }
+        } else {
+            LOG.error("Conf null in intraserver");
         }
 
         this.reader = new MappedBusReader(sharedFile, fileSize, packetSize, true);
