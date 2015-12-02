@@ -61,6 +61,7 @@ public class IntraNodeServer implements IConnection {
                 Object cpuConfig = ((Map) cpuBindsConfig).get(sourceTask);
                 if (cpuConfig != null && cpuConfig instanceof  Integer) {
                     cpu = (int) cpuConfig;
+                    LOG.info("CPU: {}", cpu);
                 } else {
                     LOG.info("Not a integer");
                 }
