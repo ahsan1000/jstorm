@@ -91,8 +91,9 @@ public class IntraNodeServer implements IConnection {
         public void run() {
             try {
                 if (cpu > 0) {
-                    LOG.error("Setting affinity of process {} to {}", sourceTask, cpu);
+                    LOG.error("Setting affinity of process {} thread {} to {}", sourceTask, Affinity.getThreadId(), cpu);
                     Affinity.setAffinity(1 << cpu);
+                    LOG.error("CPU of task {} thread {} is {}", sourceTask, Affinity.getThreadId(), Affinity.getCpu());
                 } else {
                     LOG.error("Not Setting affinity of process {}", cpu);
                 }

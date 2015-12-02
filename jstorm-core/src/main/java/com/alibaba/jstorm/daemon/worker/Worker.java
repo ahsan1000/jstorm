@@ -33,6 +33,7 @@ import backtype.storm.generated.GlobalStreamId;
 import com.alibaba.jstorm.message.intranode.IntraNodeServer;
 import com.alibaba.jstorm.schedule.default_assign.ResourceWorkerSlot;
 import com.alibaba.jstorm.utils.*;
+import net.openhft.affinity.AffinitySupport;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -486,6 +487,7 @@ public class Worker {
         StringBuilder sb = new StringBuilder();
 
         try {
+            AffinitySupport.setThreadId();
             String topology_id = args[0];
             String supervisor_id = args[1];
             String port_str = args[2];
