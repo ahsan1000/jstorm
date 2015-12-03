@@ -189,7 +189,7 @@ public class MappedBusReader {
 			}
 			timeoutCounter = 0;
 			timerStart = 0;
-			LOG.info("******************************** Reading next  **************************");
+			// LOG.info("******************************** Reading next  **************************");
 			return true;
 		}
 		timeoutCounter++;

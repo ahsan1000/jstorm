@@ -75,7 +75,7 @@ public class IntraNodeClient implements IConnection {
 //            packetThreadLocal.set(packet);
 //        }
 
-        LOG.info("Writing message: " + msg.task() + " " + msg.componentId() + ":" + msg.stream() + " to: " + sharedFile);
+        // LOG.info("Writing message: " + msg.task() + " " + msg.componentId() + ":" + msg.stream() + " to: " + sharedFile);
         UUID uuid = UUID.randomUUID();
         byte[] content = msg.message();
         // extent is metadata + msg
