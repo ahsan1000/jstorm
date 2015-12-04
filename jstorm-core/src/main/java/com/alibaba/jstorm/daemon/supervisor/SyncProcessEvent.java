@@ -793,6 +793,9 @@ class SyncProcessEvent extends ShutdownWork {
 
         // commandSB.append("java -server -Xdebug -Xrunjdwp:transport=dt_socket,address=8000,server=y,suspend=n ");
         commandSB.append("java -server ");
+//        if (port == 6800) {
+//            commandSB.append("-agentpath:/home/supun/tools/jprofiler7/bin/linux-x64/libjprofilerti.so=port=8849,nowait ");
+//        }
         commandSB.append(" -Xms" + memSize);
         commandSB.append(" -Xmx" + memSize + " ");
         commandSB.append(" -Xmn" + memSize / 3 + " ");
