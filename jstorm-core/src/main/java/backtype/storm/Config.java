@@ -22,6 +22,7 @@ import backtype.storm.serialization.IKryoDecorator;
 import backtype.storm.serialization.IKryoFactory;
 
 import com.esotericsoftware.kryo.Serializer;
+import storm.trident.testing.StringLength;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -1424,6 +1425,11 @@ public class Config extends HashMap<String, Object> {
      * Weather we are going to use a pipeline
      */
     public static final String COLLECTIVE_USE_PIPE_LINE = "topology.collective.use.pipeline";
+
+    /**
+     * Weather the pipeline is split
+     */
+    public static final String COLLECTIVE_USE_PIPE_LINE_SPLIT = "topology.collective.use.pipeline.split";
 
     public static final String STORM_MESSAGING_INTRANODE_PACKET_SIZE = "storm.messaging.intranode.packet_size";
     public static final String STORM_MESSAGING_INTRANODE_BASE_FILE = "storm.messaging.intranode.base_file";

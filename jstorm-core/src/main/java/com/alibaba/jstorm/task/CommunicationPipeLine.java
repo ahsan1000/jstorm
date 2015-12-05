@@ -1,5 +1,7 @@
 package com.alibaba.jstorm.task;
 
+import backtype.storm.Config;
+import backtype.storm.utils.Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -12,7 +14,9 @@ public class CommunicationPipeLine {
 
     private boolean nodePipe = true;
 
-    private PipeLineNode rootNode;
+    // private PipeLineNode rootNode;
+
+    private boolean split = false;
 
     private class PipeLineNode {
         int previousTask; // the previous task
@@ -48,6 +52,8 @@ public class CommunicationPipeLine {
 
     public CommunicationPipeLine(Map conf, TreeSet<Integer> rootTaskId, TreeMap<String, TreeMap<Integer, TreeSet<Integer>>> mappings) {
         this.rootTaskIds = rootTaskId;
+        this.split = Utils.getBoolean(conf.get(Config.COLLECTIVE_USE_PIPE_LINE_SPLIT), false);
+        LOG.info("Pipe-line Split {}", split);
         buildPipeLine(mappings);
 
         StringBuilder sb = new StringBuilder();
@@ -58,17 +64,21 @@ public class CommunicationPipeLine {
     }
 
     public void buildPipeLine(TreeMap<String, TreeMap<Integer, TreeSet<Integer>>> mappings) {
-        rootNode = new PipeLineNode(-1);
-        rootNode.inMemoryTasks.addAll(rootTaskIds);
-        nodes.add(rootNode);
-
-        PipeLineNode currentNode = rootNode;
+        int i = 0;
+        PipeLineNode currentNode = null;
         for (Map.Entry<String, TreeMap<Integer, TreeSet<Integer>>> e : mappings.entrySet()) {
+            if (i == 0 || (split && i == mappings.entrySet().size() / 2 )) {
+                PipeLineNode rootNode = new PipeLineNode(-1);
+                rootNode.inMemoryTasks.addAll(rootTaskIds);
+                nodes.add(rootNode);
+                currentNode = rootNode;
+            }
             List<PipeLineNode> list = buildNodePipeLine(currentNode, e.getValue());
             nodes.addAll(list);
             if (list.size() > 0) {
                 currentNode = list.get(list.size() - 1);
             }
+            i++;
         }
     }
 
@@ -100,42 +110,21 @@ public class CommunicationPipeLine {
 
     public TreeSet<Integer> getAllTasks(int taskId) {
         TreeSet<Integer> returnTasks = new TreeSet<Integer>();
-        PipeLineNode node = search(taskId);
-        if (node != null) {
-            LOG.info("Searched node with {}: " + node.serialize(), taskId);
-            for (int t : node.inMemoryTasks) {
-                if (t != taskId) {
-                    returnTasks.add(t);
-                }
-            }
-            // add the source as well
-            returnTasks.add(node.sourceTask);
-            // only valid targets are added, last node in pipe line
-            if (node.targetTask >= 0) {
-                returnTasks.add(node.targetTask);
-            }
-        } else {
-            LOG.info("Failed to get node: " + taskId);
-        }
-        LOG.info("return tasks: {}", returnTasks);
-        return returnTasks;
-    }
-
-    public TreeSet<Integer> getChildTasks(int taskId) {
-        TreeSet<Integer> returnTasks = new TreeSet<Integer>();
-        PipeLineNode node = search(taskId);
-        if (node != null) {
-            LOG.info("Searched node with {}: " + node.serialize(), taskId);
-            if (taskId == node.sourceTask) {
+        List<PipeLineNode> nodes = search(taskId);
+        if (nodes != null) {
+            for (PipeLineNode node : nodes) {
+                LOG.info("Searched node with {}: " + node.serialize(), taskId);
                 for (int t : node.inMemoryTasks) {
-                    if (t != taskId) {
+                    if (t != taskId && !returnTasks.contains(t)) {
                         returnTasks.add(t);
                     }
                 }
                 // add the source as well
-                returnTasks.add(node.sourceTask);
+                if (!returnTasks.contains(node.sourceTask)) {
+                    returnTasks.add(node.sourceTask);
+                }
                 // only valid targets are added, last node in pipe line
-                if (node.targetTask >= 0) {
+                if (node.targetTask >= 0 && !returnTasks.contains(node.targetTask)) {
                     returnTasks.add(node.targetTask);
                 }
             }
@@ -146,12 +135,38 @@ public class CommunicationPipeLine {
         return returnTasks;
     }
 
-    private PipeLineNode search(int taskId) {
+    public TreeSet<Integer> getChildTasks(int taskId) {
+        TreeSet<Integer> returnTasks = new TreeSet<Integer>();
+        List<PipeLineNode> nodes = search(taskId);
         for (PipeLineNode node : nodes) {
-            if (node.sourceTask == taskId || node.inMemoryTasks.contains(taskId)) {
-                return node;
+            // LOG.info("Searched node with {}: " + node.serialize(), taskId);
+            if (taskId == node.sourceTask) {
+                for (int t : node.inMemoryTasks) {
+                    if (t != taskId && !returnTasks.contains(t)) {
+                        returnTasks.add(t);
+                    }
+                }
+                // add the source as well
+                if (!returnTasks.contains(node.sourceTask)) {
+                    returnTasks.add(node.sourceTask);
+                }
+                // only valid targets are added, last node in pipe line
+                if (node.targetTask >= 0 && !returnTasks.contains(node.targetTask)) {
+                    returnTasks.add(node.targetTask);
+                }
             }
         }
-        return null;
+        // LOG.info("return tasks: {}", returnTasks);
+        return returnTasks;
+    }
+
+    private List<PipeLineNode> search(int taskId) {
+        List<PipeLineNode> returnList = new ArrayList<PipeLineNode>();
+        for (PipeLineNode node : nodes) {
+            if (node.sourceTask == taskId || node.inMemoryTasks.contains(taskId)) {
+                returnList.add(node);
+            }
+        }
+        return returnList;
      }
 }

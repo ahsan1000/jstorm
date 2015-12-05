@@ -75,8 +75,6 @@ public class CommunicationTree {
         String s = CommunicationPlanner.printMappings(mappings);
         sb.append("Mappings: ").append(s);
 
-
-
         LOG.info("Collective tree: " + sb.toString());
         Object workerLevelBranching = conf.get(Config.COLLECTIVE_WORKER_BRANCHING_FACTOR);
         if (workerLevelBranching != null) {
