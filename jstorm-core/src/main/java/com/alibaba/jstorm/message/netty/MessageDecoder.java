@@ -113,7 +113,7 @@ public class MessageDecoder extends FrameDecoder {
 	                            getTransmitHistogram(channel, clientPort);
 	                    if (netTransTime != null) {
 	                        netTransTime.update(interval );
-	
+
 	                    }
                     }
 
@@ -157,14 +157,14 @@ public class MessageDecoder extends FrameDecoder {
                 return null;
             }
 
-            String component = null;
+            int sourceTask = -1;
             String stream = null;
             if (headerLength > 0) {
                 ChannelBuffer header = buf.readBytes(headerLength);
                 String headerValue = new String(header.array());
                 String splits[] = headerValue.split(" ");
                 stream = splits[0];
-                component = splits[1];
+                sourceTask = Integer.parseInt(splits[1]);
             }
 
             // There's enough bytes in the buffer. Read it.
@@ -178,7 +178,7 @@ public class MessageDecoder extends FrameDecoder {
             // LOG.info("Receive task:{}, length: {}, data:{}",
             // task, length, JStormUtils.toPrintableString(rawBytes));
 
-            TaskMessage ret = new TaskMessage(task, rawBytes, component, stream);
+            TaskMessage ret = new TaskMessage(task, rawBytes, sourceTask, stream);
             recvSpeed.update(Double.valueOf(rawBytes.length + 6));
             return ret;
         } finally {
@@ -233,18 +233,18 @@ public class MessageDecoder extends FrameDecoder {
                     nettyConnection, channel);
         }
     }
-    
+
     public static void removeTransmitHistogram(String nettyConnection) {
         Channel oldChannel = null;
-        
+
         for (Entry<Channel, String> entry: transmitNameMap.entrySet()) {
             if (nettyConnection.equals(entry.getValue())) {
                 oldChannel = entry.getKey();
             }
         }
-        
+
         removeTransmitHistogram(oldChannel);
     }
-    
-    
+
+
 }

@@ -64,13 +64,11 @@ public class CommunicationTree {
      * Create a collective tree
      * @param conf topology configuration
      */
-    public CommunicationTree(Map conf, Set<Integer> rootTaskId,
+    public CommunicationTree(Map conf, int rootTaskId, String rootSupervisorId, int rootWorkerPort,
                              TreeMap<String, TreeMap<Integer, TreeSet<Integer>>> mappings,
                              boolean expandingTree, boolean useFlatTree) {
         StringBuilder sb = new StringBuilder("Root Tasks: ");
-        for (Integer t : rootTaskId) {
-            sb.append(t).append(" ");
-        }
+        sb.append(rootTaskId).append(" ");
         sb.append("\n");
         String s = CommunicationPlanner.printMappings(mappings);
         sb.append("Mappings: ").append(s);
@@ -101,8 +99,10 @@ public class CommunicationTree {
         this.expandingTree = expandingTree;
 
         root = new TreeNode();
-        root.taskIds.addAll(rootTaskId);
-        buildTree(root, mappings);
+        root.taskIds.add(rootTaskId);
+
+        List<SupervisorWorker> supervisorWorkers = buildList(mappings, rootSupervisorId, rootWorkerPort);
+        buildTree(root, supervisorWorkers);
         // LOG.info("Tree: {}", BTreePrinter.print(root));
     }
 
@@ -144,24 +144,53 @@ public class CommunicationTree {
         return null;
     }
 
+    private List<SupervisorWorker> buildList(TreeMap<String, TreeMap<Integer, TreeSet<Integer>>> mappings, String rootSupervisorId, int rootWorkerPort) {
+        List<SupervisorWorker> supervisorWorkers = new ArrayList<SupervisorWorker>();
+        for (Map.Entry<String, TreeMap<Integer, TreeSet<Integer>>> e : mappings.entrySet()) {
+            String supervisor = e.getKey();
+
+            TreeMap<Integer, TreeSet<Integer>> workers = e.getValue();
+            List<WorkerTask> workerTasks = new ArrayList<WorkerTask>();
+            for (Map.Entry<Integer, TreeSet<Integer>> w : workers.entrySet()) {
+                List<Integer> tasks = new ArrayList<Integer>(w.getValue());
+                Collections.sort(tasks);
+                WorkerTask workerTask = new WorkerTask(w.getKey(), tasks);
+                if (rootSupervisorId.equals(supervisor) && rootWorkerPort == w.getKey()) {
+                    workerTask.setPriority(10);
+                }
+                workerTasks.add(workerTask);
+            }
+            Collections.sort(workerTasks);
+            SupervisorWorker e1 = new SupervisorWorker(supervisor, workerTasks);
+            if (rootSupervisorId.equals(supervisor)) {
+                e1.setPriority(10);
+            }
+            supervisorWorkers.add(e1);
+        }
+        Collections.sort(supervisorWorkers);
+
+        return supervisorWorkers;
+    }
+
+    private void buildBinaryTree(TreeNode parent, List<SupervisorWorker> supervisorWorkers) {
+        Queue<TreeNode> treeNodes = new LinkedList<TreeNode>();
+
+    }
+
     /**
      * Build the whole collective tree
      * @param parent the starting node
-     * @param tasks worker to task mapping in nodes, all these tasks are connected using collective operations
+     * @param supervisorWorkers worker to task mapping in nodes, all these tasks are connected using collective operations
      */
-    private void buildTree(TreeNode parent, TreeMap<String, TreeMap<Integer, TreeSet<Integer>>> tasks) {
-        NavigableSet<String> treeMap = tasks.navigableKeySet();
-        Iterator<String> itr = treeMap.iterator();
-
+    private void buildTree(TreeNode parent, List<SupervisorWorker> supervisorWorkers) {
         Queue<TreeNode> treeNodes = new LinkedList<TreeNode>();
         treeNodes.offer(parent);
 
         TreeNode p = treeNodes.poll();
         int nodeCount = 0;
 
-        while (itr.hasNext()) {
-            String nodes = itr.next();
-            TreeMap<Integer, TreeSet<Integer>> workers = tasks.get(nodes);
+        for (SupervisorWorker worker : supervisorWorkers) {
+            List<WorkerTask> workers = worker.getWorkerTasksList();
             TreeNode n = buildTreeOfNode(workers);
             p.children.add(n);
             treeNodes.offer(n);
@@ -179,10 +208,7 @@ public class CommunicationTree {
      * @param tasks worker to task mapping in this node, all these tasks are connected using collective operations
      * @return the first node of this sub tree
      */
-    private TreeNode buildTreeOfNode(TreeMap<Integer, TreeSet<Integer>> tasks) {
-        NavigableSet<Integer> treeMap = tasks.navigableKeySet();
-        Iterator<Integer> itr = treeMap.iterator();
-
+    private TreeNode buildTreeOfNode(List<WorkerTask> tasks) {
         TreeNode nodeRoot = new TreeNode();
 
         int count = workerLevelBranchingFactor;
@@ -191,9 +217,8 @@ public class CommunicationTree {
         treeNodes.add(nodeRoot);
         TreeNode parent = null;
 
-        while (itr.hasNext()) {
-            Integer w = itr.next();
-            TreeSet<Integer> t = tasks.get(w);
+        for (WorkerTask workerTask : tasks) {
+            List<Integer> t = workerTask.getTasks();
 
             // if worker level branching factor is < 0, then we will create a flat tree
             if (count == workerLevelBranchingFactor) {

@@ -93,7 +93,7 @@ public class IntraNodeClient implements IConnection {
 
         final int
             compIdLength =
-            msg.componentId()
+                (msg.sourceTask() + "")
                 .length();
         final int
             streamLength =
@@ -146,7 +146,7 @@ public class IntraNodeClient implements IConnection {
 
         final byte[]
             compIdBytes =
-            msg.componentId()
+                (msg.sourceTask() + "")
                 .getBytes();
         count = 0;
         while (count < compIdLength) {
@@ -283,7 +283,7 @@ public class IntraNodeClient implements IConnection {
                         }
 
                         for (int i = 0; i < 100000; i++) {
-                            client.send(new TaskMessage(1, finalS.getBytes(), "1", "" + i));
+                            client.send(new TaskMessage(1, finalS.getBytes(), 1, "" + i));
                         }
                     }
                 });

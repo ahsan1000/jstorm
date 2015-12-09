@@ -77,7 +77,7 @@ public class TaskTransfer {
     protected Timer timer;
     protected Task task;
     protected int taskId;
-    
+
     protected ConcurrentHashMap<WorkerSlot, IConnection> nodeportSocket;
     protected ConcurrentHashMap<Integer, IConnection> intraNodeConnections;
 
@@ -99,7 +99,7 @@ public class TaskTransfer {
         this.transferQueue = workerData.getTransferQueue();
         this.innerTaskTransfer = workerData.getInnerTaskTransfer();
         this.taskId = thisTaskId;
-        
+
         this.nodeportSocket = workerData.getNodeportSocket();
         this.intraNodeConnections = workerData.getIntraNodeConnections();
         this.taskNodeport = workerData.getTaskNodeport();
@@ -141,28 +141,28 @@ public class TaskTransfer {
         int targetTaskId = tuple.getTargetTaskId();
         // this is equal to taskId
         int sourceTaskId = tuple.getSourceTask();
-        GlobalStreamId globalStreamId = new GlobalStreamId(tuple.getSourceComponent(), tuple.getSourceStreamId());
+        GlobalTaskId globalStreamId = new GlobalTaskId(sourceTaskId, tuple.getSourceStreamId());
 
         // first check weather we need to skip
         if (downStreamTasks.isSkip(globalStreamId, sourceTaskId, targetTaskId)) {
-            //LOG.info("Skipping transfer of tuple {} --> {}", sourceTaskId, targetTaskId);
+//            LOG.info("Skipping transfer of tuple {} --> {}", sourceTaskId, targetTaskId);
             return;
         }
 
         // we will get the target is no mapping
         int mapping = downStreamTasks.getMapping(globalStreamId, sourceTaskId, targetTaskId);
-        //LOG.info("Got a mapping of task transfer {} --> {}", targetTaskId, mapping);
+        // LOG.info("Got a mapping of task transfer {} --> {}", targetTaskId, mapping);
         StringBuilder innerTaskTextMsg = new StringBuilder();
         StringBuilder outerTaskTextMsg = new StringBuilder();
         DisruptorQueue exeQueue = innerTaskTransfer.get(mapping);
         if (exeQueue != null) {
             // in this case we are not going to hit TaskReceiver, so we need to do what we did there
             // lets determine weather we need to send this message to other tasks as well acting as an intermediary
-            Map<GlobalStreamId, Set<Integer>> downsTasks = downStreamTasks.allDownStreamTasks(mapping);
-            //LOG.info("Task TRANSFER taskId: {}, down tasks: {}", mapping, DownstreamTasks.printDownTasks(downsTasks));
+            Map<GlobalTaskId, Set<Integer>> downsTasks = downStreamTasks.allDownStreamTasks(mapping);
+            // LOG.info("Task TRANSFER taskId: {}, down tasks: {}", mapping, DownstreamTasks.printDownTasks(downsTasks));
             if (downsTasks != null && downsTasks.containsKey(globalStreamId) && !downsTasks.get(globalStreamId).isEmpty()) {
                 Set<Integer> tasks = downsTasks.get(globalStreamId);
-                //LOG.info("TRANSFER tasks: {}", tasks);
+//                LOG.info("TRANSFER tasks: {}", tasks);
                 byte[] tupleMessage = null;
 
                 for (Integer task : tasks) {
@@ -177,7 +177,7 @@ public class TaskTransfer {
                             if (tupleMessage == null) {
                                 tupleMessage = serializer.serialize(tuple);
                             }
-                            TaskMessage taskMessage = new TaskMessage(task, tupleMessage, tuple.getSourceComponent(), tuple.getSourceStreamId());
+                            TaskMessage taskMessage = new TaskMessage(task, tupleMessage, tuple.getSourceTask(), tuple.getSourceStreamId());
                             IConnection conn = getConnection(task);
                             if (conn != null) {
                                 conn.send(taskMessage);
@@ -190,15 +190,16 @@ public class TaskTransfer {
                 }
                 //LOG.info("TRANSFER: Sending downstream message from task " + mapping + " [" + "inner tasks: " + innerTaskTextMsg + " outer tasks: " + outerTaskTextMsg + "]");
             } else {
-                //LOG.info("Executing task, No Downstream task for message with stream ID: " + globalStreamId);
+//                LOG.info("Executing task, No Downstream task for message with stream ID: " + globalStreamId);
                 exeQueue.publish(tuple);
             }
         } else {
-            //LOG.info("Transferring tuple via network {} --> {}", sourceTaskId, targetTaskId);
+//            LOG.info("Transferring tuple via network {} --> {}", sourceTaskId, targetTaskId);
             int taskid = tuple.getTargetTaskId();
-            byte[] tupleMessage = serializer.serialize(tuple);
+            byte[] tupleMessage;
+            tupleMessage = serializer.serialize(tuple);
             TaskMessage taskMessage = new TaskMessage(taskid, tupleMessage,
-                    tuple.getSourceComponent(), tuple.getSourceStreamId());
+                    tuple.getSourceTask(), tuple.getSourceStreamId());
             IConnection conn = getConnection(taskid);
             if (conn != null) {
                 conn.send(taskMessage);
@@ -206,8 +207,8 @@ public class TaskTransfer {
         }
     }
 
-    public void transfer(byte []tuple, int task, String componentId, String streamId) {
-        TaskMessage taskMessage = new TaskMessage(task, tuple, componentId, streamId);
+    public void transfer(byte []tuple, int task, int sourceTask, String streamId) {
+        TaskMessage taskMessage = new TaskMessage(task, tuple, sourceTask, streamId);
         IConnection conn = getConnection(task);
         if (conn != null) {
             conn.send(taskMessage);
@@ -221,7 +222,7 @@ public class TaskTransfer {
     public void transfer(byte []tuple, Tuple tupleExt, int task) {
         DisruptorQueue exeQueue = innerTaskTransfer.get(task);
         if (exeQueue == null) {
-            TaskMessage taskMessage = new TaskMessage(task, tuple, tupleExt.getSourceComponent(), tupleExt.getSourceStreamId());
+            TaskMessage taskMessage = new TaskMessage(task, tuple);
             IConnection conn = getConnection(task);
             if (conn != null) {
                 conn.send(taskMessage);
@@ -285,9 +286,11 @@ public class TaskTransfer {
             try {
                 TupleExt tuple = (TupleExt) event;
                 int taskid = tuple.getTargetTaskId();
-                byte[] tupleMessage = serializer.serialize(tuple);
+                byte[] tupleMessage;
+                tupleMessage = serializer.serialize(tuple);
+
                 TaskMessage taskMessage = new TaskMessage(taskid, tupleMessage,
-                        tuple.getSourceComponent(), tuple.getSourceStreamId());
+                        tuple.getSourceTask(), tuple.getSourceStreamId());
                 IConnection conn = getConnection(taskid);
                 if (conn != null) {
                     conn.send(taskMessage);

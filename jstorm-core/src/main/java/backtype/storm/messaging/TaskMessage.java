@@ -22,7 +22,7 @@ import java.nio.ByteBuffer;
 public class TaskMessage {
     private int _task;
     private byte[] _message;
-    private String componentId;
+    private int sourceTask;
     private String stream;
 
     public TaskMessage(int task, byte[] message) {
@@ -30,29 +30,29 @@ public class TaskMessage {
         _message = message;
     }
 
-    public TaskMessage(int _task, byte[] _message, String componentId, String stream) {
+    public TaskMessage(int _task, byte[] _message, int sourceTask, String stream) {
         this._task = _task;
         this._message = _message;
-        this.componentId = componentId;
+        this.sourceTask = sourceTask;
         this.stream = stream;
     }
 
-    public String componentId() {
-        return componentId;
+    public int sourceTask() {
+        return sourceTask;
     }
 
     public String stream() {
         return stream;
     }
-    
+
     public int task() {
         return _task;
     }
-    
+
     public byte[] message() {
         return _message;
     }
-    
+
     public static boolean isEmpty(TaskMessage message) {
         if (message == null) {
             return true;
@@ -61,10 +61,10 @@ public class TaskMessage {
         } else if (message.message().length == 0) {
             return true;
         }
-        
+
         return false;
     }
-    
+
     @Deprecated
     public ByteBuffer serialize() {
         ByteBuffer bb = ByteBuffer.allocate(_message.length + 2);
@@ -72,7 +72,7 @@ public class TaskMessage {
         bb.put(_message);
         return bb;
     }
-    
+
     @Deprecated
     public void deserialize(ByteBuffer packet) {
         if (packet == null)

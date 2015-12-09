@@ -77,16 +77,19 @@ public class CommunicationPlanner {
      * broadcast the message to other workers in the same machine
      *
      * @param context topology context
-     * @param componentId this component id
+     * @param correspondingTaskId this task id
      * @return map of streams to tasks
      */
-    public DownstreamTasks getDownStreamTasks(TopologyContext context, String componentId) {
+    public DownstreamTasks getDownStreamTasks(TopologyContext context, int correspondingTaskId) {
+        String componentId = context.getComponentId(correspondingTaskId);
         DownstreamTasks downStreamTasks = new DownstreamTasks();
         Map<String, Map<String, Grouping>> targets = context.getTargets(componentId);
         int taskId = context.getThisTaskId();
         Boolean useFlatTree = (Boolean) conf.get(Config.COLLECTIVE_USE_FLAT_TREE);
         Boolean usePipeLine = (Boolean) conf.get(Config.COLLECTIVE_USE_PIPE_LINE);
         // assume we are in the top broadcasting, we build the tree from this node
+        String correspondingTaskNode = getNodeId(correspondingTaskId);
+        int correspondingTaskPort = getWorkerPort(correspondingTaskId);
         for (Map.Entry<String, Map<String, Grouping>> e : targets.entrySet()) {
             String stream = e.getKey();
 
@@ -98,7 +101,7 @@ public class CommunicationPlanner {
                 Grouping g = entry.getValue();
                 String id = entry.getKey();
                 // first lets process ALL operation
-                // we need to get all the tasks which are bounded by ALL operation to this component.
+                // we need to get all the tasks which are bounded by ALL operation to this task.
                 // then we will add those tasks to a common pool and build a tree
                 // we will use this tree for calculating the downstream tasks
                 if (Grouping._Fields.ALL.equals(Thrift.groupingType(g))) {
@@ -109,18 +112,19 @@ public class CommunicationPlanner {
                     TreeSet<Integer> rootTasks = new TreeSet<Integer>(ts);
                     // go through the component tasks list to figure out the correct locations
                     mappings = exctractWorkerMappings(allTasks, taskNodePort);
+                    LOG.info("Task ID passed: {}", correspondingTaskId);
                     if (usePipeLine != null && usePipeLine) {
-                        CommunicationPipeLine pipeLine = new CommunicationPipeLine(conf, rootTasks, mappings);
-                        downStreamTasks.addPipeLine(new GlobalStreamId(componentId, stream), pipeLine);
+                        CommunicationPipeLine pipeLine = new CommunicationPipeLine(conf, correspondingTaskId, correspondingTaskNode, correspondingTaskPort, mappings);
+                        downStreamTasks.addPipeLine(new GlobalTaskId(correspondingTaskId, stream), pipeLine);
                     } else {
                         CommunicationTree allTree;
                         if (useFlatTree != null && useFlatTree) {
-                            allTree = new CommunicationTree(conf, rootTasks, mappings, true, true);
+                            allTree = new CommunicationTree(conf, correspondingTaskId, correspondingTaskNode, correspondingTaskPort, mappings, true, true);
                         } else {
-                            allTree = new CommunicationTree(conf, rootTasks, mappings, true, false);
+                            allTree = new CommunicationTree(conf, correspondingTaskId, correspondingTaskNode, correspondingTaskPort, mappings, true, false);
                         }
 
-                        GlobalStreamId streamId = new GlobalStreamId(componentId, stream);
+                        GlobalTaskId streamId = new GlobalTaskId(correspondingTaskId, stream);
                         LOG.info("TaskId: {}, StreamId: {}, Tree: {}", taskId, streamId, allTree.printTree());
                         // query the tree to get the broad cast tasks
                         downStreamTasks.addCollectiveTree(streamId, allTree);
@@ -162,19 +166,25 @@ public class CommunicationPlanner {
                 List<Integer> ts = context.getComponentTasks(componentId);
                 allTasks.addAll(ts);
                 mappings = exctractWorkerMappings(allTasks, taskNodePort);
-                if (usePipeLine != null && usePipeLine) {
-                    CommunicationPipeLine pipeLine = new CommunicationPipeLine(conf, sourceTasks, mappings);
-                    downStreamTasks.addPipeLine(sourceGlobalStreamId, pipeLine);
-                } else {
-                    CommunicationTree tree;
-                    if (useFlatTree != null && useFlatTree) {
-                        tree = new CommunicationTree(conf, sourceTasks, mappings, true, true);
+
+                for (int sourceTask : sourceTasks) {
+                    int rootTaskPort = getWorkerPort(sourceTask);
+                    String rootTaskNode = getNodeId(sourceTask);
+                    LOG.info("Task ID passed: {}", rootTaskPort);
+                    if (usePipeLine != null && usePipeLine) {
+                        CommunicationPipeLine pipeLine = new CommunicationPipeLine(conf, sourceTask, rootTaskNode, rootTaskPort, mappings);
+                        downStreamTasks.addPipeLine(new GlobalTaskId(sourceTask, stream), pipeLine);
                     } else {
-                        tree = new CommunicationTree(conf, sourceTasks, mappings, true, false);
+                        CommunicationTree tree;
+                        if (useFlatTree != null && useFlatTree) {
+                            tree = new CommunicationTree(conf, sourceTask, rootTaskNode, rootTaskPort, mappings, true, true);
+                        } else {
+                            tree = new CommunicationTree(conf, sourceTask, rootTaskNode, rootTaskPort, mappings, true, false);
+                        }
+                        LOG.info("TaskId: {}, StreamID: {}, Tree: {}", taskId, sourceGlobalStreamId, tree.printTree());
+                        // query the tree to get the broadcast tasks
+                        downStreamTasks.addCollectiveTree(new GlobalTaskId(sourceTask, stream), tree);
                     }
-                    LOG.info("TaskId: {}, StreamID: {}, Tree: {}", taskId, sourceGlobalStreamId, tree.printTree());
-                    // query the tree to get the broadcast tasks
-                    downStreamTasks.addCollectiveTree(sourceGlobalStreamId, tree);
                 }
             } /*else if (Grouping._Fields.SHUFFLE.equals(Thrift.groupingType(g))) {
                 // calculate for SHUFFLE operation
@@ -192,7 +202,7 @@ public class CommunicationPlanner {
         }
 
         StringBuilder sb = new StringBuilder("");
-        for (Map.Entry<GlobalStreamId, Set<Integer>> e : downStreamTasks.allDownStreamTasks(taskId).entrySet()) {
+        for (Map.Entry<GlobalTaskId, Set<Integer>> e : downStreamTasks.allDownStreamTasks(taskId).entrySet()) {
             sb.append(e.getKey()).append(":");
             for (Integer t : e.getValue()) {
                 sb.append(" ").append(t);
@@ -342,5 +352,15 @@ public class CommunicationPlanner {
             broadCastTasksForNodeWorker.add(t);
         }
         return broadCastTasks;
+    }
+
+    private int getWorkerPort(int taskId) {
+        ResourceWorkerSlot slot = taskNodePort.get(taskId);
+        return slot.getPort();
+    }
+
+    private String getNodeId(int taskId) {
+        ResourceWorkerSlot slot = taskNodePort.get(taskId);
+        return slot.getNodeId();
     }
 }

@@ -226,7 +226,7 @@ public class IntraNodeServer implements IConnection {
             offset+=willRead;
         }
 
-        TaskMessage msg = new TaskMessage(task, content, new String(compId), new String(stream));
+        TaskMessage msg = new TaskMessage(task, content, Integer.parseInt(new String(compId)), new String(stream));
         // LOG.info("Recvd message: " + msg.task() + " " + msg.componentId() + ":" + msg.stream() + ": count: " + ++this.count);
         enqueue(msg);
     }

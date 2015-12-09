@@ -266,7 +266,7 @@ public class Task {
     public TaskReceiver mkTaskReceiver() {
         String taskName = JStormServerUtils.getName(componentid, taskid);
         TaskReceiver taskReceiver;
-        DownstreamTasks downStreamTasks = ccPlanner.getDownStreamTasks(topologyContext, componentid);
+        DownstreamTasks downStreamTasks = ccPlanner.getDownStreamTasks(topologyContext, taskid);
         if (isTaskBatchTuple) {
             taskTransfer.setDownStreamTasks(downStreamTasks);
             taskReceiver =

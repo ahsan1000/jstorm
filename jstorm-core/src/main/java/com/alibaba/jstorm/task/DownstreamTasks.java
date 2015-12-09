@@ -6,30 +6,30 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class DownstreamTasks {
-    private Map<GlobalStreamId, List<CommunicationTree>> expandingTrees = new HashMap<GlobalStreamId, List<CommunicationTree>>();
+    private Map<GlobalTaskId, List<CommunicationTree>> expandingTrees = new HashMap<GlobalTaskId, List<CommunicationTree>>();
 
-    private Map<GlobalStreamId, List<CommunicationTree>> nonExpandingTrees = new HashMap<GlobalStreamId, List<CommunicationTree>>();
+    private Map<GlobalTaskId, List<CommunicationTree>> nonExpandingTrees = new HashMap<GlobalTaskId, List<CommunicationTree>>();
 
-    private Map<GlobalStreamId, List<CommunicationPipeLine>> pipeLines = new HashMap<GlobalStreamId, List<CommunicationPipeLine>>();
+    private Map<GlobalTaskId, List<CommunicationPipeLine>> pipeLines = new HashMap<GlobalTaskId, List<CommunicationPipeLine>>();
 
-    private Map<Integer, Map<GlobalStreamId, Set<Integer>>> downstreamTaskCache = new ConcurrentHashMap<Integer, Map<GlobalStreamId, Set<Integer>>>();
+    private Map<Integer, Map<GlobalTaskId, Set<Integer>>> downstreamTaskCache = new ConcurrentHashMap<Integer, Map<GlobalTaskId, Set<Integer>>>();
 
     private Map<Key, Integer> mapCache = new ConcurrentHashMap<Key, Integer>();
 
     private Map<Key, Boolean> skipCache = new ConcurrentHashMap<Key, Boolean>();
 
     private class Key {
-        GlobalStreamId id;
+        GlobalTaskId id;
         int taskId;
         int targetId;
 
-        private Key(GlobalStreamId id, int taskId, int targetId) {
+        private Key(GlobalTaskId id, int taskId, int targetId) {
             this.id = id;
             this.taskId = taskId;
             this.targetId = targetId;
         }
 
-        public GlobalStreamId getId() {
+        public GlobalTaskId getId() {
             return id;
         }
 
@@ -64,7 +64,7 @@ public class DownstreamTasks {
         }
     }
 
-    public int getMapping(GlobalStreamId streamId, int taskId, int targetId) {
+    public int getMapping(GlobalTaskId streamId, int taskId, int targetId) {
         Key key = new Key(streamId, taskId, targetId);
         if (mapCache.containsKey(key)) {
             return mapCache.get(key);
@@ -86,7 +86,7 @@ public class DownstreamTasks {
         }
     }
 
-    public boolean isSkip(GlobalStreamId streamId, int taskId, int targetId) {
+    public boolean isSkip(GlobalTaskId streamId, int taskId, int targetId) {
         Key key = new Key(streamId, taskId, targetId);
         if (skipCache.containsKey(key)) {
             return  skipCache.get(key);
@@ -124,7 +124,7 @@ public class DownstreamTasks {
      * @param id stream id
      * @param tree tree
      */
-    public void addCollectiveTree(GlobalStreamId id, CommunicationTree tree) {
+    public void addCollectiveTree(GlobalTaskId id, CommunicationTree tree) {
         // we keep the expanding trees and non expanding trees in two separate maps
         if (tree.isExpandingTree()) {
             List<CommunicationTree> trees = expandingTrees.get(id);
@@ -143,7 +143,7 @@ public class DownstreamTasks {
         }
     }
 
-    public void addPipeLine(GlobalStreamId id, CommunicationPipeLine pipeLine) {
+    public void addPipeLine(GlobalTaskId id, CommunicationPipeLine pipeLine) {
         List<CommunicationPipeLine> pipes = pipeLines.get(id);
         if (pipes == null) {
             pipes = new ArrayList<CommunicationPipeLine>();
@@ -157,13 +157,13 @@ public class DownstreamTasks {
      * @param taskId task id
      * @return a map of all the downstream tasks, keyed by the stream and component id
      */
-    public Map<GlobalStreamId, Set<Integer>> allDownStreamTasks(int taskId) {
+    public Map<GlobalTaskId, Set<Integer>> allDownStreamTasks(int taskId) {
         if (downstreamTaskCache.containsKey(taskId)) {
             return downstreamTaskCache.get(taskId);
         } else {
-            Map<GlobalStreamId, Set<Integer>> allTasks = new HashMap<GlobalStreamId, Set<Integer>>();
-            for (Map.Entry<GlobalStreamId, List<CommunicationTree>> e : expandingTrees.entrySet()) {
-                GlobalStreamId id = e.getKey();
+            Map<GlobalTaskId, Set<Integer>> allTasks = new HashMap<GlobalTaskId, Set<Integer>>();
+            for (Map.Entry<GlobalTaskId, List<CommunicationTree>> e : expandingTrees.entrySet()) {
+                GlobalTaskId id = e.getKey();
                 List<CommunicationTree> treeList = e.getValue();
                 TreeSet<Integer> treeSet = new TreeSet<Integer>();
                 for (CommunicationTree t : treeList) {
@@ -172,8 +172,8 @@ public class DownstreamTasks {
                 allTasks.put(id, treeSet);
             }
 
-            for (Map.Entry<GlobalStreamId, List<CommunicationTree>> e : nonExpandingTrees.entrySet()) {
-                GlobalStreamId id = e.getKey();
+            for (Map.Entry<GlobalTaskId, List<CommunicationTree>> e : nonExpandingTrees.entrySet()) {
+                GlobalTaskId id = e.getKey();
                 List<CommunicationTree> treeList = e.getValue();
                 Set<Integer> treeSet = allTasks.get(id);
                 if (treeSet == null) {
@@ -185,8 +185,8 @@ public class DownstreamTasks {
                 }
             }
 
-            for (Map.Entry<GlobalStreamId, List<CommunicationPipeLine>> e : pipeLines.entrySet()) {
-                GlobalStreamId id = e.getKey();
+            for (Map.Entry<GlobalTaskId, List<CommunicationPipeLine>> e : pipeLines.entrySet()) {
+                GlobalTaskId id = e.getKey();
                 List<CommunicationPipeLine> treeList = e.getValue();
                 Set<Integer> treeSet = allTasks.get(id);
                 if (treeSet == null) {

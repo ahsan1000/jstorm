@@ -87,7 +87,7 @@ class MessageBatch {
 
     /**
      * try to add a TaskMessage to a batch
-     * 
+     *
      * @param taskMsg
      * @return false if the msg could not be added due to buffer size limit;
      *         true otherwise
@@ -104,7 +104,7 @@ class MessageBatch {
             return 0;
 
         int size = 10; // INT + INT + SHORT
-        String header = taskMsg.stream() + " " + taskMsg.componentId();
+        String header = taskMsg.stream() + " " + taskMsg.sourceTask();
         byte []headerBytes = header.getBytes();
         size += headerBytes.length;
         if (taskMsg.message() != null)
@@ -114,7 +114,7 @@ class MessageBatch {
 
     /**
      * Has this batch used up allowed buffer size
-     * 
+     *
      * @return
      */
     boolean isFull() {
@@ -123,7 +123,7 @@ class MessageBatch {
 
     /**
      * true if this batch doesn't have any messages
-     * 
+     *
      * @return
      */
     boolean isEmpty() {
@@ -132,7 +132,7 @@ class MessageBatch {
 
     /**
      * # of msgs in this batch
-     * 
+     *
      * @return
      */
     int size() {
@@ -170,12 +170,12 @@ class MessageBatch {
 
     /**
      * write a TaskMessage into a stream
-     * 
+     *
      * Each TaskMessage is encoded as: task ... short(2) len ... int(4) payload
      * ... byte[] *
      */
     private void writeTaskMessage(ChannelBufferOutputStream bout,
-            TaskMessage message) throws Exception {
+                                  TaskMessage message) throws Exception {
         int payload_len = 0;
         if (message.message() != null)
             payload_len = message.message().length;
@@ -187,7 +187,7 @@ class MessageBatch {
 
         bout.writeShort((short) task_id);
         bout.writeInt(payload_len);
-        String header = message.stream() + " " + message.componentId();
+        String header = message.stream() + " " + message.sourceTask();
         byte []headerBytes = header.getBytes();
         bout.writeInt(headerBytes.length);
         bout.write(headerBytes);
